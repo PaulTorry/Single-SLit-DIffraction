@@ -22,7 +22,6 @@ function addEventListeners () {
   canvas.addEventListener('mouseup', function (e) { mouseCoords = undefined })
   canvas.addEventListener('mousemove', (e) => {
     if (mouseCoords) {
-   //   console.log(mouseCoords)
       const b = new Vec(e.offsetX, e.offsetY)
       dragEvent(mouseCoords, b)
       mouseCoords = b
@@ -31,10 +30,13 @@ function addEventListeners () {
 }
 
 function dragEvent (a, b) {
+  console.log(theta)
   const d = b.subtract(a)
   if (d.x * d.x > d.y * d.y || a.x < pos.grating.x || a.x > pos.screen.x) {
     wave.phase += (d.x) * 1 / wave.length
   } else { theta -= d.y / pos.topViewXY.y }
+  console.log(theta)
+  console.log()
   update()
 }
 
@@ -49,8 +51,6 @@ const pos = { topViewXY: new Vec(800, 400), grating: { x: 200, dx: 5 }, screen: 
 let centers = findSlitCenters()
 let blocks = makeBlocks()
 let theta = 0
-
-//console.log(centers, blocks)
 
 function findSlitCenters (n = slit.number, w = slit.width, s = slit.separation, vSize = pos.topViewXY.y) {
   const offset = ((n - 1) / 2) * (w + s)
@@ -77,7 +77,7 @@ function drawBackground () {
 }
 
 function drawForground () {
-  newSin(new Vec(0, centers[0]), pos.grating.x)
+  newSin(0, centers[0], pos.grating.x)
 
   centers.forEach((c, i, a) => {
 
@@ -86,12 +86,18 @@ function drawForground () {
     const yy = c
     const col = colours[i]
     const fillOff = Math.sin(theta) * (c - a[0])
-    newSin(new Vec(xx, yy), ll, xx, wave, 1, theta, col, [[fillOff, 3, 'blue', (a) => Math.max(a, 0)], [fillOff, 3, 'red', (a) => Math.min(a, 0)]])
+    newSin(xx, yy, ll, xx, wave, 1, theta, col, [[fillOff, 3, 'blue', (a) => Math.max(a, 0)], [fillOff, 3, 'red', (a) => Math.min(a, 0)]])
   })
 
   let offsets = centers.map((c, i, a) => Math.sin(theta) * (c - a[0]))
   let fills = offsets.map((c, i, a) => [c, 3, colours[i]])
-  // newSin(new Vec(xx, yy), ll, xx, wave, 1, theta, col, [[fillOff, 3, 'blue', (a) => Math.max(a, 0)], [fillOff, 3, 'red', (a) => Math.min(a, 0)]])
+  newSin(100, pos.topViewXY.y + 50, 600, pos.grating.x + pos.grating.dx, wave, 4, 0, 'black', fills)
+
+  // const getTrigFunction = (centers) => (x) => centers.reduce((p, v, i, a) => p + Math.sin(x + v), 0)
+  // let trigF = getTrigFunction(centers)
+  // console.log(trigF)
+  // console.log(trigF(1.57))
+  newSin(100, pos.topViewXY.y + 150, 600, pos.grating.x + pos.grating.dx, wave, 1, 0, 'black', undefined, (a) => Math.sin(a) + Math.sin(a))
 }
 
 function clearBackGround (color = 'white') {
@@ -99,28 +105,24 @@ function clearBackGround (color = 'white') {
   cx.fillRect(0, 0, cx.canvas.width, cx.canvas.height)
 }
 
-function newSin (startPos, length, pd = 0, w = wave, scale = 1, deflectionAngle = 0, colour = 'black', fill = [[0, 0, 'black']]) {
-  const dispAtX = (x, func = (a) => a) => func(scale * w.amplitude * Math.sin(((x + pd) / scale) / (w.length) - w.phase))
-  const pageVec = (x, y) => new Vec(x, y).rotate(deflectionAngle).add(startPos)
-  const plot = (x, dx, func) => {
+function newSin (startX, startY, length, pd = 0, w = wave, scale = 1, deflectionAngle = 0, colour = 'black', fill = [[0, 0, 'black']], trigFunc = Math.sin) {
+  const dispAtX = (x, rectFunc = (a) => a) => rectFunc(w.amplitude * trigFunc(((x + pd)) / (w.length) - w.phase))
+  const pageVec = (x, y) => new Vec(x, y).rotate(deflectionAngle).scale(scale).addXY(startX, startY)
+  const plot = (x, dx, rectFunc) => {
     cx.beginPath()
     cx.moveTo(...pageVec(x, 0))
     for (let dl = x; dl <= x + dx; dl += 1) {
-      cx.lineTo(...pageVec(dl, dispAtX(dl, func)))
+      cx.lineTo(...pageVec(dl, dispAtX(dl, rectFunc)))
     }
     cx.lineTo(...pageVec(x + dx, 0))
   }
 
   cx.strokeStyle = colour
-  plot(0, length)
+  plot(0, length / scale)
   cx.stroke()
 
- // console.log("fsesf");
-
   if (fill) {
-//    console.log("sfwef");
     for (const [x, dx, col, func] of fill) {
-      console.log(fill)
       cx.fillStyle = col
       plot(x, dx, func)
       cx.fill()
