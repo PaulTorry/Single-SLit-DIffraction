@@ -4,6 +4,7 @@ Vec
 const colours = ['#4989ab', '#49ab87', '#49ab60', '#87ab49', '#aba649', '#ab9249']
 const canvas = document.querySelector('canvas')
 const cx = canvas.getContext('2d')
+const animate = { run: true, notPaused: true }
 const sliders = {
   wave: { s: document.getElementById('wavelengthSlide'), t: document.getElementById('wavelengthText') },
   slits: { s: document.getElementById('slitsSlide'), t: document.getElementById('slitsText') }
@@ -18,8 +19,9 @@ function addEventListeners () {
     if (value !== slit.number) { sliders.slits.t.textContent = value; slit.number = value; update(true) }
   })
 
-  canvas.addEventListener('mousedown', function (e) { mouseCoords = new Vec(e.offsetX, e.offsetY) })
-  canvas.addEventListener('mouseup', function (e) { mouseCoords = undefined })
+  canvas.addEventListener('mousedown', function (e) { mouseCoords = new Vec(e.offsetX, e.offsetY); animate.notPaused = false })
+  canvas.addEventListener('mouseup', function (e) { mouseCoords = undefined; animate.notPaused = true })
+  canvas.addEventListener('dblclick', function (e) { animate.run = !animate.run })
   canvas.addEventListener('mousemove', (e) => {
     if (mouseCoords) {
       const b = new Vec(e.offsetX, e.offsetY)
@@ -32,18 +34,20 @@ function addEventListeners () {
 function dragEvent (a, b) {
   console.log(theta)
   const d = b.subtract(a)
-  if (d.x * d.x > d.y * d.y || a.x < pos.grating.x || a.x > pos.screen.x) {
+  if (d.x * d.x > 16 * d.y * d.y || a.x < pos.grating.x || a.x > pos.screen.x || a.y > pos.topViewXY.y) {
     wave.phase += (d.x) * 1 / wave.length
-  } else { theta -= d.y / pos.topViewXY.y }
+  } else if (16 * d.x * d.x < d.y * d.y) {
+    theta -= d.y * 1 / pos.topViewXY.y
+  }
   console.log(theta)
   console.log()
   update()
 }
 
 var mouseCoords
-const slit = { number: 5, width: 5, separation: 40 }
-const wave = { length: 5, phase: 0, amplitude: 10 }
-const pos = { topViewXY: new Vec(800, 400), grating: { x: 200, dx: 5 }, screen: { x: 600, dx: 4 } }
+const slit = { number: 5, width: 5, separation: 60 }
+const wave = { length: 2, phase: 0, amplitude: 15 }
+const pos = { topViewXY: new Vec(1200, 600), grating: { x: 300, dx: 5 }, screen: { x: 900, dx: 4 } }
 
 // const makeBlocks = (centers, w, vSize) => [0].concat(centers.map((v) => v - w / 2)).concat(centers.map((v) => v + w / 2)).concat([vSize]).sort((a, b) => a - b)
 // const pack2 = (ac, cv, ix, arr) => ix % 2 ? ac.concat([[arr[ix - 1], arr[ix]]]) : ac
@@ -77,10 +81,11 @@ function drawBackground () {
 }
 
 function drawForground () {
+  drawLine(pos.grating.x, pos.topViewXY.y / 2, pos.screen.x, pos.topViewXY.y / 2 + (pos.screen.x - pos.grating.x + pos.grating.dx) * -Math.tan(theta))
+
   newSin(0, centers[0], pos.grating.x)
 
   centers.forEach((c, i, a) => {
-
     const xx = pos.grating.x + pos.grating.dx
     const ll = (pos.screen.x - xx) / Math.cos(theta) * 0.5
     const yy = c
@@ -89,15 +94,19 @@ function drawForground () {
     newSin(xx, yy, ll, xx, wave, 1, theta, col, [[fillOff, 3, 'blue', (a) => Math.max(a, 0)], [fillOff, 3, 'red', (a) => Math.min(a, 0)]])
   })
 
-  let offsets = centers.map((c, i, a) => Math.sin(theta) * (c - a[0]))
-  let fills = offsets.map((c, i, a) => [c, 3, colours[i]])
-  newSin(100, pos.topViewXY.y + 50, 600, pos.grating.x + pos.grating.dx, wave, 4, 0, 'black', fills)
+  const offsets = centers.map((c, i, a) => Math.sin(theta) * (c - a[0]))
+  const fills = offsets.map((c, i, a) => [c, 3, colours[i]])
+  newSin(100, pos.topViewXY.y + 100, 600, pos.grating.x + pos.grating.dx, wave, 4, 0, 'black', fills)
 
-  // const getTrigFunction = (centers) => (x) => centers.reduce((p, v, i, a) => p + Math.sin(x + v), 0)
-  // let trigF = getTrigFunction(centers)
-  // console.log(trigF)
-  // console.log(trigF(1.57))
-  newSin(100, pos.topViewXY.y + 150, 600, pos.grating.x + pos.grating.dx, wave, 1, 0, 'black', undefined, (a) => Math.sin(a) + Math.sin(a))
+  console.log(centers)
+
+  const getTrigFunction = (centers) => (x) => centers.map((v, i, a) => Math.sin(x + ((v - a[0]) * Math.sin(theta)) / wave.length)).reduce((p, vv) => p + vv)
+  const trigF = getTrigFunction(centers)
+
+  newSin(pos.screen.x + pos.screen.dx, pos.topViewXY.y / 2 - (pos.screen.x - pos.grating.x) * Math.tan(theta), 200, pos.grating.x + pos.grating.dx, wave, 1, 0, 'black', undefined, trigF)
+  // for (let iii = 0; iii < 300; iii++) {
+  //   console.log(trigF(iii / 100))              - (pos.screen - pos.grating) * 0 * Math.tan(theta)
+  // }
 }
 
 function clearBackGround (color = 'white') {
@@ -130,6 +139,14 @@ function newSin (startX, startY, length, pd = 0, w = wave, scale = 1, deflection
   }
 }
 
+function drawLine (x1, y1, x2, y2, color) {
+  if (color) { cx.strokeStyle = color }
+  cx.beginPath()
+  cx.moveTo(x1, y1)
+  cx.lineTo(x2, y2)
+  cx.stroke()
+}
+
 function update () {
   centers = findSlitCenters()
   blocks = makeBlocks()
@@ -139,4 +156,14 @@ function update () {
 }
 
 addEventListeners()
+
+function animateIt (time, lastTime) {
+  if (lastTime != null & animate.run & animate.notPaused) {
+    wave.phase += (time - lastTime) * 0.003
+  }
+  update()
+  requestAnimationFrame(newTime => animateIt(newTime, time))
+}
+requestAnimationFrame(animateIt)
+
 update()
