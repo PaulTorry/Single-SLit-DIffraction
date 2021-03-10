@@ -13,6 +13,7 @@ class Vec {
   scaleXY (x, y) { return new Vec(this.x * x, this.y * y) }
   scale (m) { return new Vec(this.x * m, this.y * m) }
   rotate (theta, p) { return Vec.rotate(this, theta, p) }
+  toCircularCoords (a) { return Vec.toCircularCoords(this) }
 
   dot (b) { return this.x * b.x + this.y * b.y }
   invert () { return this.scale(-1) }
@@ -41,6 +42,14 @@ class Vec {
 
   static fromIdArray (idArray) {
     return idArray.map(Vec.fromID)
+  }
+
+  static fromCircularCoords (r, theta) {
+    return new Vec(r * Math.sin(theta), r * Math.cos(theta))
+  }
+
+  static toCircularCoords (a) {
+    return { r: Math.sqrt(a.x * a.x + a.y * a.y), theta: Math.atan(a.x / a.y) }
   }
 
   // static zero = new Vec(0, 0)
