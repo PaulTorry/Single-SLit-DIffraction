@@ -14,9 +14,9 @@ const slit = { number: 5, width: 10, separation: 60 }
 const wave = { length: 2, phase: 0, amplitude: 15 }
 const pos = { topViewXY: new Vec(1200, 600), grating: { x: 300, dx: 5 }, screen: { x: 900, dx: 4 }, phaseDiagram: new Vec(1000, 700) }
 
-let centers = findSlitCenters()
-let blocks = makeBlocks()
 let theta = 0
+let slitData = getSlitData()
+let blocks = makeBlocks()
 
 function addEventListeners () {
   let mouseCoords
@@ -54,13 +54,16 @@ function addEventListeners () {
   })
 }
 
-function findSlitCenters (n = slit.number, w = slit.width, s = slit.separation, vSize = pos.topViewXY.y) {
+function getSlitData (n = slit.number, w = slit.width, s = slit.separation, vSize = pos.topViewXY.y) {
   const offset = ((n - 1) / 2) * (w + s)
-  return Array(Number.parseInt(n)).fill().map((_, i) => i * (w + s) - offset + vSize / 2)
+  const centres = Array(Number.parseInt(n)).fill().map((_, i) => i * (w + s) - offset + vSize / 2)
+  const offsets = centres.map((yy, i, a) => Math.sin(theta) * (yy - a[0]))
+  const vectors = offsets.map((c) => Vec.fromCircularCoords(20, -wave.phase + (c + pos.grating.x) / wave.length))
+  return arrayFuncs.zip([centres, offsets, vectors])
 }
 
-function makeBlocks (c = centers, w = slit.width, vSize = pos.topViewXY.y) {
-  // const pack2 = (ac, cv, ix, arr) => ix % 2 ? ac.concat([[arr[ix - 1], arr[ix]]]) : ac
+function makeBlocks (s = slitData, w = slit.width, vSize = pos.topViewXY.y) {
+  const c = slitData.map((c) => c[0])
   const blocks = [0].concat(c.map((v) => v - w / 2)).concat(c.map((v) => v + w / 2)).concat([vSize]).sort((a, b) => a - b)
   return blocks.reduce(arrayFuncs.pack2, [])
 }
@@ -78,30 +81,32 @@ function drawBackground () {
   cx.stroke()
 }
 
-function drawForground () {
+function drawForground (sd = slitData) {
   const ll = (pos.screen.x - pos.grating.x) / Math.cos(theta) * 0.5
-  const offsets = centers.map((yy, i, a) => Math.sin(theta) * (yy - a[0]))
-  const vectors = offsets.map((c) => Vec.fromCircularCoords(20, -wave.phase + (c + pos.grating.x) / wave.length))
-  const cov = arrayFuncs.zip([centers, offsets, vectors])
-
-    console.log(cov)
+  // const offsets = centers.map((yy, i, a) => Math.sin(theta) * (yy - a[0]))
+  // const vectors = offsets.map((c) => Vec.fromCircularCoords(20, -wave.phase + (c + pos.grating.x) / wave.length))
+  // const cov = arrayFuncs.zip([centers, offsets, vectors])
+  //const slitData = getSlitData()
+  const centers = sd.map((c) => c[0])
+  const offsets = sd.map((c) => c[1])
+  const vectors = sd.map((c) => c[2])
+  console.log(sd)
 
   // console.log(centers, offsets, vectors)
   drawLine(pos.grating.x, pos.topViewXY.y / 2, pos.screen.x, pos.topViewXY.y / 2 + (pos.screen.x - pos.grating.x) * -Math.tan(theta))
 
-  newSin(0, centers[0], pos.grating.x)
+  newSin(0, sd[0][0], pos.grating.x)
 
-  centers.forEach((yy, i, a) => {
+  sd.forEach(([yy, off], i, a) => {
     const col = colours[i]
-    const fillOff = Math.sin(theta) * (yy - a[0])
-    newSin(pos.grating.x, yy, ll, pos.grating.x, wave, 1, theta, col, [[fillOff, 3, 'blue', (a) => Math.max(a, 0)], [fillOff, 3, 'red', (a) => Math.min(a, 0)]])
+    newSin(pos.grating.x, yy, ll, pos.grating.x, wave, 1, theta, col, [[off, 3, 'blue', (a) => Math.max(a, 0)], [off, 3, 'red', (a) => Math.min(a, 0)]])
     drawLine(pos.grating.x, yy, ...Vec.fromCircularCoords(20, -wave.phase + pos.grating.x / wave.length).addXY(pos.grating.x, yy))
   })
 
-  const fills = offsets.map((yy, i, a) => [yy, 3, colours[i]])
+  const fills = sd.map(([_, off], i, a) => [off, 3, colours[i]])
   newSin(100, pos.topViewXY.y + 100, 600, pos.grating.x, wave, 4, 0, 'black', fills)
 
-  vectors.reduce((p, c, i, a) => { return p.concat([[p[i][1], p[i][1].add(c)]])}, [[new Vec(0, 0), new Vec(0, 0)]])
+  sd.reduce((p, [, , c], i, a) => { return p.concat([[p[i][1], p[i][1].add(c)]]) }, [[new Vec(0, 0), new Vec(0, 0)]])
     .forEach((c, i, a) => {
       drawLine(...c[0].add(pos.phaseDiagram), ...c[1].add(pos.phaseDiagram), colours[i])
     })
@@ -156,7 +161,8 @@ function drawLine (x1, y1, x2, y2, color) {
 }
 
 function update () {
-  centers = findSlitCenters()
+  slitData = getSlitData()
+  //centers = findSlitCenters()
   blocks = makeBlocks()
   clearBackGround()
   drawBackground()
@@ -174,7 +180,7 @@ function animateIt (time, lastTime) {
     return animateIt(newTime, time)
   })
 }
-requestAnimationFrame (animateIt)
+requestAnimationFrame(animateIt)
 
 console.log(Vec.fromCircularCoords(5, 0))
 console.log(Vec.fromCircularCoords(5, 0).toCircularCoords())
