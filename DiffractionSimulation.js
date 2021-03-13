@@ -1,5 +1,5 @@
 /* global
-Vec, requestAnimationFrame
+Vec, requestAnimationFrame, arrayFuncs
 */
 const colours = ['#4989ab', '#49ab87', '#49ab60', '#87ab49', '#aba649', '#ab9249']
 const canvas = document.querySelector('canvas')
@@ -10,7 +10,7 @@ const sliders = {
   slits: { s: document.getElementById('slitsSlide'), t: document.getElementById('slitsText') }
 }
 
-const slit = { number: 5, width: 5, separation: 60 }
+const slit = { number: 5, width: 10, separation: 60 }
 const wave = { length: 2, phase: 0, amplitude: 15 }
 const pos = { topViewXY: new Vec(1200, 600), grating: { x: 300, dx: 5 }, screen: { x: 900, dx: 4 }, phaseDiagram: new Vec(1000, 700) }
 
@@ -25,12 +25,12 @@ function addEventListeners () {
     console.log(theta)
     const d = b.subtract(a)
     if (d.x * d.x > 16 * d.y * d.y || a.x < pos.grating.x || a.x > pos.screen.x || a.y > pos.topViewXY.y) {
-      wave.phase += (d.x) * 1 / wave.length
+      wave.phase += (d.x) * 0.5 / wave.length
     } else if (16 * d.x * d.x < d.y * d.y) {
       theta -= d.y * 1 / pos.topViewXY.y
     }
-    //console.log(theta)
-   // console.log()
+    // console.log(theta)
+    // console.log()
     update()
   }
 
@@ -60,18 +60,18 @@ function findSlitCenters (n = slit.number, w = slit.width, s = slit.separation, 
 }
 
 function makeBlocks (c = centers, w = slit.width, vSize = pos.topViewXY.y) {
-  const pack2 = (ac, cv, ix, arr) => ix % 2 ? ac.concat([[arr[ix - 1], arr[ix]]]) : ac
+  // const pack2 = (ac, cv, ix, arr) => ix % 2 ? ac.concat([[arr[ix - 1], arr[ix]]]) : ac
   const blocks = [0].concat(c.map((v) => v - w / 2)).concat(c.map((v) => v + w / 2)).concat([vSize]).sort((a, b) => a - b)
-  return blocks.reduce(pack2, [])
+  return blocks.reduce(arrayFuncs.pack2, [])
 }
 
 function drawBackground () {
-  cx.fillStyle = 'black'
+  cx.fillStyle = 'lightgrey'
   cx.strokeStyle = 'black'
   cx.strokeRect(0, 0, cx.canvas.width, cx.canvas.height)
   cx.strokeRect(0, 0, ...pos.topViewXY)
   blocks.forEach(([y1, y2], i, a) => {
-    cx.strokeRect(pos.grating.x, y1, pos.grating.dx, y2 - y1)
+    cx.fillRect(pos.grating.x - pos.grating.dx, y1, pos.grating.dx * 2, y2 - y1)
   })
   cx.strokeRect(pos.screen.x, 0, pos.screen.dx, pos.topViewXY.y)
 
@@ -79,29 +79,29 @@ function drawBackground () {
 }
 
 function drawForground () {
-  drawLine(pos.grating.x, pos.topViewXY.y / 2, pos.screen.x, pos.topViewXY.y / 2 + (pos.screen.x - pos.grating.x + pos.grating.dx) * -Math.tan(theta))
+  const ll = (pos.screen.x - pos.grating.x) / Math.cos(theta) * 0.5
+  const offsets = centers.map((yy, i, a) => Math.sin(theta) * (yy - a[0]))
+  const vectors = offsets.map((c) => Vec.fromCircularCoords(20, -wave.phase + (c + pos.grating.x) / wave.length))
+  const cov = arrayFuncs.zip([centers, offsets, vectors])
+
+    console.log(cov)
+
+  // console.log(centers, offsets, vectors)
+  drawLine(pos.grating.x, pos.topViewXY.y / 2, pos.screen.x, pos.topViewXY.y / 2 + (pos.screen.x - pos.grating.x) * -Math.tan(theta))
 
   newSin(0, centers[0], pos.grating.x)
 
-  centers.forEach((c, i, a) => {
-    const xx = pos.grating.x + pos.grating.dx
-    const ll = (pos.screen.x - xx) / Math.cos(theta) * 0.5
-    const yy = c
+  centers.forEach((yy, i, a) => {
     const col = colours[i]
-    const fillOff = Math.sin(theta) * (c - a[0])
-    newSin(xx, yy, ll, xx, wave, 1, theta, col, [[fillOff, 3, 'blue', (a) => Math.max(a, 0)], [fillOff, 3, 'red', (a) => Math.min(a, 0)]])
-    drawLine(xx, yy, ...Vec.fromCircularCoords(20, -wave.phase + xx / wave.length).addXY(xx, yy))
+    const fillOff = Math.sin(theta) * (yy - a[0])
+    newSin(pos.grating.x, yy, ll, pos.grating.x, wave, 1, theta, col, [[fillOff, 3, 'blue', (a) => Math.max(a, 0)], [fillOff, 3, 'red', (a) => Math.min(a, 0)]])
+    drawLine(pos.grating.x, yy, ...Vec.fromCircularCoords(20, -wave.phase + pos.grating.x / wave.length).addXY(pos.grating.x, yy))
   })
 
-  const offsets = centers.map((c, i, a) => Math.sin(theta) * (c - a[0]))
-  const fills = offsets.map((c, i, a) => [c, 3, colours[i]])
-  newSin(100, pos.topViewXY.y + 100, 600, pos.grating.x + pos.grating.dx, wave, 4, 0, 'black', fills)
+  const fills = offsets.map((yy, i, a) => [yy, 3, colours[i]])
+  newSin(100, pos.topViewXY.y + 100, 600, pos.grating.x, wave, 4, 0, 'black', fills)
 
-  offsets.map((c) => Vec.fromCircularCoords(20, -wave.phase + (c + pos.grating.x + pos.grating.dx) / wave.length))
-    .reduce((p, c, i, a) => {
-      //console.log(p, c, i, a)
-      return p.concat([[p[i][1], p[i][1].add(c)]])
-    }, [[new Vec(0, 0), new Vec(0, 0)]])
+  vectors.reduce((p, c, i, a) => { return p.concat([[p[i][1], p[i][1].add(c)]])}, [[new Vec(0, 0), new Vec(0, 0)]])
     .forEach((c, i, a) => {
       drawLine(...c[0].add(pos.phaseDiagram), ...c[1].add(pos.phaseDiagram), colours[i])
     })
