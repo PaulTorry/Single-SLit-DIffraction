@@ -49,7 +49,7 @@ class Vec {
   }
 
   static toCircularCoords (a) {
-    return { r: Math.sqrt(a.x * a.x + a.y * a.y), theta: Math.atan(a.x / a.y) }
+    return { r: Math.sqrt(a.x * a.x + a.y * a.y), theta: Math.atan2(a.y, a.x) }
   }
 
   // static zero = new Vec(0, 0)

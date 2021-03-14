@@ -10,12 +10,14 @@ const sliders = {
   slits: { s: document.getElementById('slitsSlide'), t: document.getElementById('slitsText') }
 }
 
-const slit = { number: 5, width: 10, separation: 60 }
-const wave = { length: 2, phase: 0, amplitude: 15 }
+const slit = { number: 5, width: 10, separation: 80 }
+const wave = { length: 2, phase: 0, amplitude: 20 }
 const pos = { topViewXY: new Vec(1200, 600), grating: { x: 300, dx: 5 }, screen: { x: 900, dx: 4 }, phaseDiagram: new Vec(1000, 700) }
+// const intensity = Array(pos.topViewXY.y).fill().map((_, i) => [i, []])
 
 let theta = 0
 let slitData = getSlitData()
+let resultantData = getResultantData(slitData)
 let blocks = makeBlocks()
 
 function addEventListeners () {
@@ -28,9 +30,12 @@ function addEventListeners () {
       wave.phase += (d.x) * 0.5 / wave.length
     } else if (16 * d.x * d.x < d.y * d.y) {
       theta -= d.y * 1 / pos.topViewXY.y
+      if (animate.run) {
+        wave.phase = 0
+      } else {
+        // recordIntensity()
+      }
     }
-    // console.log(theta)
-    // console.log()
     update()
   }
 
@@ -58,8 +63,14 @@ function getSlitData (n = slit.number, w = slit.width, s = slit.separation, vSiz
   const offset = ((n - 1) / 2) * (w + s)
   const centres = Array(Number.parseInt(n)).fill().map((_, i) => i * (w + s) - offset + vSize / 2)
   const offsets = centres.map((yy, i, a) => Math.sin(theta) * (yy - a[0]))
-  const vectors = offsets.map((c) => Vec.fromCircularCoords(20, -wave.phase + (c + pos.grating.x) / wave.length))
+  const vectors = offsets.map((c) => Vec.fromCircularCoords(1, -wave.phase + (c + pos.grating.x) / wave.length))
   return arrayFuncs.zip([centres, offsets, vectors])
+}
+
+function getResultantData (sd = slitData) {
+  const ll = (pos.screen.x - pos.grating.x) / Math.cos(theta) * 0.5
+  const sumOfComponents = sd.reduce((p, [,, v]) => p.add(v), new Vec(0, 0))
+  return { ll, sumOfComponents }
 }
 
 function makeBlocks (s = slitData, w = slit.width, vSize = pos.topViewXY.y) {
@@ -67,6 +78,8 @@ function makeBlocks (s = slitData, w = slit.width, vSize = pos.topViewXY.y) {
   const blocks = [0].concat(c.map((v) => v - w / 2)).concat(c.map((v) => v + w / 2)).concat([vSize]).sort((a, b) => a - b)
   return blocks.reduce(arrayFuncs.pack2, [])
 }
+
+// function recordIntensity (y) {}
 
 function drawBackground () {
   cx.fillStyle = 'lightgrey'
@@ -81,53 +94,51 @@ function drawBackground () {
   cx.stroke()
 }
 
-function drawForground (sd = slitData) {
-  const ll = (pos.screen.x - pos.grating.x) / Math.cos(theta) * 0.5
-  // const offsets = centers.map((yy, i, a) => Math.sin(theta) * (yy - a[0]))
-  // const vectors = offsets.map((c) => Vec.fromCircularCoords(20, -wave.phase + (c + pos.grating.x) / wave.length))
-  // const cov = arrayFuncs.zip([centers, offsets, vectors])
-  //const slitData = getSlitData()
-  const centers = sd.map((c) => c[0])
-  const offsets = sd.map((c) => c[1])
-  const vectors = sd.map((c) => c[2])
-  console.log(sd)
+function drawForground (sd = slitData, rd = resultantData) {
+  const capitalD = (pos.screen.x - pos.grating.x)
 
-  // console.log(centers, offsets, vectors)
-  drawLine(pos.grating.x, pos.topViewXY.y / 2, pos.screen.x, pos.topViewXY.y / 2 + (pos.screen.x - pos.grating.x) * -Math.tan(theta))
+  // line from center of slits to screen
+  drawLine(pos.grating.x, pos.topViewXY.y / 2, capitalD, capitalD * -Math.tan(theta))
 
-  newSin(0, sd[0][0], pos.grating.x)
+  // waves arriving at grating
+  newSin(wave, 0, sd[0][0], pos.grating.x)
 
-  sd.forEach(([yy, off], i, a) => {
+  // waves, phasors at slit and at path difference
+  sd.forEach(([yy, off, v], i, a) => {
     const col = colours[i]
-    newSin(pos.grating.x, yy, ll, pos.grating.x, wave, 1, theta, col, [[off, 3, 'blue', (a) => Math.max(a, 0)], [off, 3, 'red', (a) => Math.min(a, 0)]])
-    drawLine(pos.grating.x, yy, ...Vec.fromCircularCoords(20, -wave.phase + pos.grating.x / wave.length).addXY(pos.grating.x, yy))
+    newSin(wave, pos.grating.x, yy, rd.ll, pos.grating.x, 1, theta, col, [[off - 2, 3, 'blue', (a) => Math.max(a, 0)], [off, 3, 'red', (a) => Math.min(a, 0)]])
+    drawLine(pos.grating.x, yy, ...Vec.fromCircularCoords(1, -wave.phase + pos.grating.x / wave.length).scale(wave.amplitude))
+    drawLine(pos.grating.x + off * Math.cos(theta), yy - off * Math.sin(theta), ...v.scale(wave.amplitude))
   })
 
+  // bottom wave with areas
   const fills = sd.map(([_, off], i, a) => [off, 3, colours[i]])
-  newSin(100, pos.topViewXY.y + 100, 600, pos.grating.x, wave, 4, 0, 'black', fills)
+  newSin(wave, 100, pos.topViewXY.y + 100, 600, pos.grating.x, 4, 0, 'black', fills)
 
-  sd.reduce((p, [, , c], i, a) => { return p.concat([[p[i][1], p[i][1].add(c)]]) }, [[new Vec(0, 0), new Vec(0, 0)]])
-    .forEach((c, i, a) => {
-      drawLine(...c[0].add(pos.phaseDiagram), ...c[1].add(pos.phaseDiagram), colours[i])
-    })
+  // sum of phasors
+  let arrowStart = new Vec(0, 0)
+  for (const i in sd) {
+    drawLine(...pos.phaseDiagram.addXY(-100, i * 40 - slit.number * 20 + 20), ...sd[i][2].scale(wave.amplitude), colours[i])
+    drawLine(...arrowStart.add(pos.phaseDiagram), ...sd[i][2].scale(wave.amplitude), colours[i])
+    arrowStart = arrowStart.add(sd[i][2].scale(wave.amplitude))
+  }
+  drawLine(...pos.phaseDiagram.addXY(100, 0), ...rd.sumOfComponents.scale(wave.amplitude), 'black')
 
-  // console.log(centers)
-
-  const getTrigFunction = (centers) => (x) => centers.map((v, i, a) => Math.cos(x + ((v - a[0]) * Math.sin(theta)) / wave.length)).reduce((p, vv) => p + vv)
-  const trigF = getTrigFunction(centers)
-
-  newSin(pos.screen.x + pos.screen.dx, pos.topViewXY.y / 2 - (pos.screen.x - pos.grating.x) * Math.tan(theta), 200, pos.grating.x + pos.grating.dx, wave, 1, 0, 'black', undefined, trigF)
-  // for (let iii = 0; iii < 300; iii++) {
-  //   console.log(trigF(iii / 100))              - (pos.screen - pos.grating) * 0 * Math.tan(theta)
-  // }
+  // Resultant sin wave and phasor
+  const screenYpos = pos.topViewXY.y / 2 - (pos.screen.x - pos.grating.x) * Math.tan(theta)
+  const newWave = { amplitude: wave.amplitude * rd.sumOfComponents.toCircularCoords().r, length: wave.length, phase: rd.sumOfComponents.toCircularCoords().theta - Math.PI / 2 }
+  newSin(newWave, pos.screen.x, screenYpos, wave.phase * wave.length, 0, 1, 0, 'black')
+  drawLine(pos.screen.x, screenYpos, ...rd.sumOfComponents.scale(20), 'black')
 }
 
 function clearBackGround (color = 'white') {
+  cx.beginPath()
   cx.fillStyle = color
   cx.fillRect(0, 0, cx.canvas.width, cx.canvas.height)
+  cx.stroke()
 }
 
-function newSin (startX, startY, length, pd = 0, w = wave, scale = 1, deflectionAngle = 0, colour = 'black', fill = [[0, 0, 'black']], trigFunc = Math.cos) {
+function newSin (w = wave, startX, startY, length, pd = 0, scale = 1, deflectionAngle = 0, colour = 'black', fill = [[0, 0, 'black']], trigFunc = Math.cos) {
   const dispAtX = (x, rectFunc = (a) => a) => rectFunc(w.amplitude * trigFunc(((x + pd)) / (w.length) - w.phase))
   const pageVec = (x, y) => new Vec(x, y).rotate(deflectionAngle).scale(scale).addXY(startX, startY)
   const plot = (x, dx, rectFunc) => {
@@ -147,22 +158,26 @@ function newSin (startX, startY, length, pd = 0, w = wave, scale = 1, deflection
     for (const [x, dx, col, func] of fill) {
       cx.fillStyle = col
       plot(x, dx, func)
+      cx.stroke()
       cx.fill()
     }
   }
 }
 
-function drawLine (x1, y1, x2, y2, color) {
+function drawLine (x1, y1, dx, dy, color) {
   if (color) { cx.strokeStyle = color }
   cx.beginPath()
   cx.moveTo(x1, y1)
-  cx.lineTo(x2, y2)
+  cx.lineTo(x1 + dx, y1 + dy)
   cx.stroke()
+  cx.fill()
+  cx.beginPath()
 }
 
 function update () {
   slitData = getSlitData()
-  //centers = findSlitCenters()
+  resultantData = getResultantData()
+  // centers = findSlitCenters()
   blocks = makeBlocks()
   clearBackGround()
   drawBackground()
@@ -174,8 +189,8 @@ addEventListeners()
 function animateIt (time, lastTime) {
   if (lastTime != null & animate.run & animate.notPaused) {
     wave.phase += (time - lastTime) * 0.003
+    update()
   }
-  update()
   requestAnimationFrame(newTime => {
     return animateIt(newTime, time)
   })
