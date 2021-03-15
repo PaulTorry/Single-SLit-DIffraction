@@ -17,9 +17,7 @@ class Vec {
 
   dot (b) { return this.x * b.x + this.y * b.y }
   invert () { return this.scale(-1) }
-  distance (a) {
-    return this.subtract(a).mag
-  }
+  distance (a) { return this.subtract(a).mag }
 
   bounds (b1, b2 = b1.invert()) {
     const x2 = Math.min(b2.x, b1.x); const x1 = Math.max(b2.x, b1.x)
@@ -29,7 +27,9 @@ class Vec {
     return new Vec(x, y)
   }
 
+  get inverse () { return this.scale(-1) }
   get mag () { return Math.sqrt((this.x * this.x) + (this.y * this.y)) }
+  get phase () { return Math.atan2(this.y, this.x) }
 
   static fromID (id) {
     return new Vec(...(id.split(',')).map(parseFloat))
