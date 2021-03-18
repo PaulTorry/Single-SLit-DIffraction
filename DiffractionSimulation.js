@@ -22,7 +22,20 @@ const pos = { topViewXY: new Vec(1200, 600), grating: { x: 300, dx: 5 }, screen:
 let intensity = Array(pos.topViewXY.y).fill().map((_, i) => [i, 0, []])
 const intensityHistory = []
 
-let theta = 0
+const getGeometry = (screen_d = screenDisplacement) => {
+  const d = screenDisplacement - pos.topViewXY.y / 2
+  const D = pos.screen.x - pos.grating.x
+  const theta = Math.atan((-d) / (pos.screen.x - pos.grating.x))
+  const l = Math.sqrt(D * D + d * d)
+  const sin = d / l
+  const cos = D / l
+  const tan = d / D
+  return { d, D, theta, l, sin, cos, tan }
+}
+
+let screenDisplacement = pos.topViewXY.y / 2
+let geo = getGeometry(screenDisplacement)
+
 let slitData = getSlitData()
 let resultantData = getResultantData(slitData)
 let blocks = makeBlocks()
@@ -51,7 +64,11 @@ function addEventListeners () {
     if (d.x * d.x > 16 * d.y * d.y || a.x < pos.grating.x || a.x > pos.screen.x || a.y > pos.topViewXY.y) {
       wave.phase += (d.x) * 0.5 / wave.length
     } else if (16 * d.x * d.x < d.y * d.y) {
-      theta -= d.y * 1 / pos.topViewXY.y
+      screenDisplacement += d.y
+      // console.log(getGeometry(displacement))
+      // theta = geo.theta
+      geo = getGeometry(screenDisplacement)
+      // theta -= d.y * 1 / pos.topViewXY.y
       if (animate.run) {
         wave.phase = 0
       } else {
@@ -80,47 +97,41 @@ function addEventListeners () {
   })
 }
 
-function getSlitData (n = slit.number, w = slit.width, s = slit.separation, vSize = pos.topViewXY.y) {
-  const offset = ((n - 1) / 2) * (w + s)
-  const centres = Array(Number.parseInt(n)).fill().map((_, i) => i * (w + s) - offset + vSize / 2)
-  const offsets = centres.map((yy, i, a) => Math.sin(theta) * (yy - a[0]))
+function getSlitData ({ number, width, separation } = slit, { phase, length } = wave, sin = geo.sin) {
+  const offset = ((number - 1) / 2) * (width + separation)
+  const centres = Array(Number.parseInt(number)).fill().map((_, i) => i * (width + separation) - offset + pos.topViewXY.y / 2)
+  const offsets = centres.map((yy, i, a) => sin * (yy - a[0]))
   const vectors = offsets.map((c) => Vec.fromCircularCoords(1, -wave.phase + (c + pos.grating.x) / wave.length))
   return arrayFuncs.zip([centres, offsets, vectors])
 }
 
 function getResultantData (sd = slitData) {
-  const beamLength = (pos.screen.x - pos.grating.x) / Math.cos(theta) * 0.5
-  const displacement = pos.topViewXY.y / 2 - (pos.screen.x - pos.grating.x) * Math.tan(theta)
   const sumOfComponents = sd.reduce((p, [,, v]) => p.add(v), new Vec(0, 0))
-  return { beamLength, displacement, sumOfComponents }
+  return { sumOfComponents }
 }
 
-function getIntensityAtDisplacement (displacement, centres = slitData.map(c => c[0])) {
-  // console.log(centres);
-  // console.log(displacement - pos.topViewXY.y / 2, (pos.screen.x - pos.grating.x));
-  const angle = Math.atan((-displacement + pos.topViewXY.y / 2) / (pos.screen.x - pos.grating.x))
-  // console.log("angle", angle, theta);
-  const offsets = centres.map((yy, i, a) => Math.sin(angle) * (yy - a[0]))
-  // console.log(offsets);
-  const vectors = offsets.map((c) => Vec.fromCircularCoords(1, -wave.phase + (c + pos.grating.x) / wave.length))
-  // console.log(vectors);
-  const sumOfComponents = vectors.reduce((p, v) => p.add(v), new Vec(0, 0))
-  // console.log(sumOfComponents);
-  return sumOfComponents.mag
+function getIntensityAtDisplacement (d, centres = slitData.map(c => c[0])) {
+  // const angle = Math.atan((-d + pos.topViewXY.y / 2) / (pos.screen.x - pos.grating.x))
+  // const offsets = centres.map((yy, i, a) => Math.sin(angle) * (yy - a[0]))
+  // const vectors = offsets.map((c) => Vec.fromCircularCoords(1, -wave.phase + (c + pos.grating.x) / wave.length))
+  // const sumOfComponents = vectors.reduce((p, v) => p.add(v), new Vec(0, 0))
+  return 0 // sumOfComponents.mag
 }
 
 function makeBlocks (s = slitData, w = slit.width, vSize = pos.topViewXY.y) {
   const c = slitData.map((c) => c[0])
   const blocks = [0].concat(c.map((v) => v - w / 2)).concat(c.map((v) => v + w / 2)).concat([vSize]).sort((a, b) => a - b)
+  // console.log(blocks)
   return blocks.reduce(arrayFuncs.pack2, [])
 }
-function addIntensity (y) {
-  const yInt = Number.parseInt(resultantData.displacement)
 
+function addIntensity (y) {
+  const yInt = Number.parseInt(geo.d)
+  // console.log(displacement, yInt)
   // console.log(resultantData.sumOfComponents.mag - getIntensityAtDisplacement(yInt), resultantData.sumOfComponents.mag, getIntensityAtDisplacement(yInt))
 
-  if (yInt < pos.topViewXY.y && yInt > 0) {
-    intensity[Number.parseInt(resultantData.displacement)][1] = resultantData.sumOfComponents.mag
+  if (yInt < pos.topViewXY.y / 2 && yInt > -pos.topViewXY.y / 2) {
+    intensity[yInt + pos.topViewXY.y / 2][1] = resultantData.sumOfComponents.mag
   }
 }
 
@@ -128,7 +139,7 @@ function recordIntensites () {
   // console.log(intensity)
   intensityHistory.push(intensity.map((c, i, a) => getIntensityAtDisplacement(i)))
   intensity = intensity.map((c, i, a) => [c[0], 0])
-  console.log(intensityHistory)
+  // console.log(intensityHistory)
   update()
 }
 
@@ -151,9 +162,7 @@ function drawBackground (c = bx) {
 
   // intensity pattern
   intensity.forEach((v, i, a) => {
-    // console.log(v)
     if (v[1]) {
-      // console.log(v)
       drawLine(c, pos.screen.x, v[0], -v[1] * wave.amplitude, 0)
     }
   })
@@ -173,10 +182,9 @@ function drawBackground (c = bx) {
 
 function drawForground (c = fx, sd = slitData, rd = resultantData) {
   c.clearRect(0, 0, c.canvas.width, c.canvas.height)
-  const capitalD = (pos.screen.x - pos.grating.x)
 
   // line from center of slits to screen
-  drawLine(c, pos.grating.x, pos.topViewXY.y / 2, capitalD, capitalD * -Math.tan(theta))
+  drawLine(c, pos.grating.x, pos.topViewXY.y / 2, geo.D, geo.d)
 
   // waves arriving at grating
   newSin(c, wave, 0, sd[0][0], pos.grating.x)
@@ -184,9 +192,9 @@ function drawForground (c = fx, sd = slitData, rd = resultantData) {
   // waves, phasors at slit and at path difference
   sd.forEach(([yy, off, v], i, a) => {
     const col = colours[i]
-    newSin(c, wave, pos.grating.x, yy, rd.beamLength, pos.grating.x, 1, theta, col, [[off - 2, 3, 'blue', (a) => Math.max(a, 0)], [off, 3, 'red', (a) => Math.min(a, 0)]])
+    newSin(c, wave, pos.grating.x, yy, geo.l / 2, pos.grating.x, 1, geo.theta, col, [[off - 2, 3, 'blue', (a) => Math.max(a, 0)], [off, 3, 'red', (a) => Math.min(a, 0)]])
     drawLine(c, pos.grating.x, yy, ...Vec.fromCircularCoords(1, -wave.phase + pos.grating.x / wave.length).scale(wave.amplitude))
-    drawLine(c, pos.grating.x + off * Math.cos(theta), yy - off * Math.sin(theta), ...v.scale(wave.amplitude))
+    drawLine(c, pos.grating.x - off * geo.cos, yy - off * geo.sin, ...v.scale(wave.amplitude))
   })
 
   // bottom wave with areas
@@ -203,18 +211,9 @@ function drawForground (c = fx, sd = slitData, rd = resultantData) {
   drawLine(c, ...pos.phaseDiagram.addXY(100, 0), ...rd.sumOfComponents.scale(wave.amplitude), 'black')
 
   // Resultant sin wave and phasor
-  const newWave = { amplitude: wave.amplitude * rd.sumOfComponents.toCircularCoords().r, length: wave.length, phase: rd.sumOfComponents.toCircularCoords().theta - Math.PI / 2 }
-  newSin(c, newWave, pos.screen.x, rd.displacement, wave.phase * wave.length, 0, 1, 0, 'black')
-  drawLine(c, pos.screen.x, rd.displacement, ...rd.sumOfComponents.scale(wave.amplitude), 'black')
-}
-
-function clearCanvas (c = cx, color = 'white') {
-  c.clearRect(0, 0, c.canvas.width, c.canvas.height)
-  // c.beginPath()
-  // c.fillStyle = color
-  // c.fillRect(0, 0, c.canvas.width, c.canvas.height)
-  // c.stroke()
-  // c.fill()
+  const newWave = { amplitude: wave.amplitude * rd.sumOfComponents.mag, length: wave.length, phase: rd.sumOfComponents.phase - Math.PI / 2 }
+  newSin(c, newWave, pos.screen.x, screenDisplacement, wave.phase * wave.length, 0, 1, 0, 'black')
+  drawLine(c, pos.screen.x, screenDisplacement, ...rd.sumOfComponents.scale(wave.amplitude), 'black')
 }
 
 function newSin (c, w = wave, startX, startY, length, pd = 0, scale = 1, deflectionAngle = 0, colour = 'black', fill = [[0, 0, 'black']], trigFunc = Math.cos) {
