@@ -102,15 +102,11 @@ function getSlitData ({ number, width, separation } = slit, { phase, length } = 
 }
 
 function getResultantData (sd = slitData) {
-  const sumOfComponents = sd.reduce((p, [,, v]) => p.add(v), new Vec(0, 0))
-  console.log(sumOfComponents)
-  return { sumOfComponents }
+  return sd.reduce((p, [,, v]) => p.add(v), new Vec(0, 0))
 }
 
 function getIntensityAtDisplacement (d) {
-  const {sumOfComponents} = getResultantData(getSlitData(slit, wave, getGeometry(d).sin))
-  console.log(sumOfComponents, sumOfComponents.scale(2))
-  return sumOfComponents.mag
+  return getResultantData(getSlitData(slit, wave, getGeometry(d).sin)).mag
 }
 
 function makeBlocks (s = slitData, w = slit.width, vSize = pos.topViewXY.y) {
@@ -170,7 +166,7 @@ function drawBackground (c = bx) {
   })
 }
 
-function drawForground (c = fx, sd = slitData, rd = resultantData) {
+function drawForground (c = fx, sd = slitData, sumOfComponents = resultantData) {
   c.clearRect(0, 0, c.canvas.width, c.canvas.height)
 
   // line from center of slits to screen
@@ -198,12 +194,12 @@ function drawForground (c = fx, sd = slitData, rd = resultantData) {
     drawLine(c, ...arrowStart.add(pos.phaseDiagram), ...sd[i][2].scale(wave.amplitude), colours[i])
     arrowStart = arrowStart.add(sd[i][2].scale(wave.amplitude))
   }
-  drawLine(c, ...pos.phaseDiagram.addXY(100, 0), ...rd.sumOfComponents.scale(wave.amplitude), 'black')
+  drawLine(c, ...pos.phaseDiagram.addXY(100, 0), ...sumOfComponents.scale(wave.amplitude), 'black')
 
   // Resultant sin wave and phasor
-  const newWave = { amplitude: wave.amplitude * rd.sumOfComponents.mag, length: wave.length, phase: rd.sumOfComponents.phase - Math.PI / 2 }
+  const newWave = { amplitude: wave.amplitude * sumOfComponents.mag, length: wave.length, phase: sumOfComponents.phase - Math.PI / 2 }
   newSin(c, newWave, pos.screen.x, screenDisplacement, wave.phase * wave.length, 0, 1, 0, 'black')
-  drawLine(c, pos.screen.x, screenDisplacement, ...rd.sumOfComponents.scale(wave.amplitude), 'black')
+  drawLine(c, pos.screen.x, screenDisplacement, ...sumOfComponents.scale(wave.amplitude), 'black')
 }
 
 function newSin (c, w = wave, startX, startY, length, pd = 0, scale = 1, deflectionAngle = 0, colour = 'black', fill = [[0, 0, 'black']], trigFunc = Math.cos) {
@@ -263,10 +259,10 @@ addEventListeners()
 
 function animateIt (time, lastTime) {
   if (lastTime != null & animate.run & animate.notPaused) {
-    const prePhase = resultantData.sumOfComponents.phase
+    const prePhase = resultantData.phase
     wave.phase += (time - lastTime) * 0.003
     updateVars()
-    if (prePhase > 0 && resultantData.sumOfComponents.phase < 0) {
+    if (prePhase > 0 && resultantData.phase < 0) {
       addIntensity()
     }
     updateScreen()
