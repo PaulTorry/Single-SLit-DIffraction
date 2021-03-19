@@ -59,20 +59,16 @@ function addEventListeners () {
   let mouseCoords
 
   function dragEvent (a, b) {
-    // console.log(theta)
     const d = b.subtract(a)
     if (d.x * d.x > 16 * d.y * d.y || a.x < pos.grating.x || a.x > pos.screen.x || a.y > pos.topViewXY.y) {
       wave.phase += (d.x) * 0.5 / wave.length
     } else if (16 * d.x * d.x < d.y * d.y) {
       screenDisplacement += d.y
-      // console.log(getGeometry(displacement))
-      // theta = geo.theta
       geo = getGeometry(screenDisplacement)
-      // theta -= d.y * 1 / pos.topViewXY.y
       if (animate.run) {
         wave.phase = 0
       } else {
-        if (wave.phase > 6) { addIntensity() }
+        if (wave.phase > 6) { addIntensity(screenDisplacement) }
       }
     }
     update()
@@ -98,24 +94,23 @@ function addEventListeners () {
 }
 
 function getSlitData ({ number, width, separation } = slit, { phase, length } = wave, sin = geo.sin) {
-  const offset = ((number - 1) / 2) * (width + separation)
-  const centres = Array(Number.parseInt(number)).fill().map((_, i) => i * (width + separation) - offset + pos.topViewXY.y / 2)
-  const offsets = centres.map((yy, i, a) => sin * (yy - a[0]))
-  const vectors = offsets.map((c) => Vec.fromCircularCoords(1, -wave.phase + (c + pos.grating.x) / wave.length))
+  const offset = pos.topViewXY.y / 2 - ((number - 1) / 2) * (width + separation)
+  const centres = Array(Number.parseInt(number)).fill().map((_, i) => i * (width + separation) + offset)
+  const offsets = centres.map((yy, i, a) => sin * (yy))
+  const vectors = offsets.map((c) => Vec.fromCircularCoords(1, -wave.phase + c / wave.length + pos.grating.x / wave.length))
   return arrayFuncs.zip([centres, offsets, vectors])
 }
 
 function getResultantData (sd = slitData) {
   const sumOfComponents = sd.reduce((p, [,, v]) => p.add(v), new Vec(0, 0))
+  console.log(sumOfComponents)
   return { sumOfComponents }
 }
 
-function getIntensityAtDisplacement (d, centres = slitData.map(c => c[0])) {
-  // const angle = Math.atan((-d + pos.topViewXY.y / 2) / (pos.screen.x - pos.grating.x))
-  // const offsets = centres.map((yy, i, a) => Math.sin(angle) * (yy - a[0]))
-  // const vectors = offsets.map((c) => Vec.fromCircularCoords(1, -wave.phase + (c + pos.grating.x) / wave.length))
-  // const sumOfComponents = vectors.reduce((p, v) => p.add(v), new Vec(0, 0))
-  return 0 // sumOfComponents.mag
+function getIntensityAtDisplacement (d) {
+  const {sumOfComponents} = getResultantData(getSlitData(slit, wave, getGeometry(d).sin))
+  console.log(sumOfComponents, sumOfComponents.scale(2))
+  return sumOfComponents.mag
 }
 
 function makeBlocks (s = slitData, w = slit.width, vSize = pos.topViewXY.y) {
@@ -127,19 +122,14 @@ function makeBlocks (s = slitData, w = slit.width, vSize = pos.topViewXY.y) {
 
 function addIntensity (y) {
   const yInt = Number.parseInt(geo.d)
-  // console.log(displacement, yInt)
-  // console.log(resultantData.sumOfComponents.mag - getIntensityAtDisplacement(yInt), resultantData.sumOfComponents.mag, getIntensityAtDisplacement(yInt))
-
   if (yInt < pos.topViewXY.y / 2 && yInt > -pos.topViewXY.y / 2) {
-    intensity[yInt + pos.topViewXY.y / 2][1] = resultantData.sumOfComponents.mag
+    intensity[yInt + pos.topViewXY.y / 2][1] = getIntensityAtDisplacement(geo.d)
   }
 }
 
 function recordIntensites () {
-  // console.log(intensity)
   intensityHistory.push(intensity.map((c, i, a) => getIntensityAtDisplacement(i)))
   intensity = intensity.map((c, i, a) => [c[0], 0])
-  // console.log(intensityHistory)
   update()
 }
 
@@ -264,7 +254,6 @@ function updateVars () {
 }
 
 function updateScreen () {
-  // clearCanvas(cx)
   drawBackground()
   drawForground()
   drawScreen()
@@ -278,7 +267,6 @@ function animateIt (time, lastTime) {
     wave.phase += (time - lastTime) * 0.003
     updateVars()
     if (prePhase > 0 && resultantData.sumOfComponents.phase < 0) {
-    //  console.log('fwefwef')
       addIntensity()
     }
     updateScreen()
@@ -288,8 +276,5 @@ function animateIt (time, lastTime) {
   })
 }
 requestAnimationFrame(animateIt)
-
-// console.log(Vec.fromCircularCoords(5, 0))
-// console.log(Vec.fromCircularCoords(5, 0).toCircularCoords())
 
 update()
