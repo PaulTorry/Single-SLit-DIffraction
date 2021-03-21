@@ -33,6 +33,7 @@ class Vec {
   get inverse () { return this.scale(-1) }
   get mag () { return Math.sqrt((this.x * this.x) + (this.y * this.y)) }
   get phase () { return Math.atan2(this.y, this.x) }
+  get normalise () { return this.scale(1 / this.mag) }
 
   static fromID (id) {
     return new Vec(...(id.split(',')).map(parseFloat))
