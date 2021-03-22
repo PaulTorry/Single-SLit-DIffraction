@@ -139,8 +139,6 @@ function addIntensity (y) {
 function recordIntensites () {
   console.log('intensity recorded')
   intensityHistory = intensity.map(a => a[3])
-  // intensityHistory.push(intensity.map((c, i, a) => getIntensityAtDisplacement(i)))
-  // intensity = intensity.map((c, i, a) => [c[0], 0])
   update()
 }
 
@@ -170,13 +168,8 @@ function drawBackground (c = bx) {
   })
   c.stroke()
 
-  c.beginPath()
-  c.moveTo(0, 0)
-  c.strokeStyle = 'rgba(0, 0, 0, 0.4)'
-  intensityHistory.forEach((vv, ii) => {
-    c.lineTo(-vv * wave.amplitude + pos.screen.x - 100, ii)
-  })
-  c.stroke()
+  drawTrace(c, intensityHistory, pos.screen.x - 100, 0, undefined, 0, 1, -wave.amplitude, 0)
+
 }
 
 function drawForground (c = fx, sd = slitData, sumOfComponents = resultantData) {
@@ -274,6 +267,16 @@ function drawLine (c, x1, y1, dx, dy, color) {
   c.stroke()
   c.fill()
   c.beginPath()
+}
+
+function drawTrace (cx, array, startX = 0, startY = 0, colour = 'rgba(0, 0, 0, 0.4)', dx = 0, dy = 1, vx = 1, vy = 0) {
+  cx.beginPath()
+  cx.moveTo(startX, startY)
+  cx.strokeStyle = colour
+  intensityHistory.forEach((v, i) => {
+    cx.lineTo(startX + dx * i + vx * v, startY + dy * i + vy * v)
+  })
+  cx.stroke()
 }
 
 function update () {
