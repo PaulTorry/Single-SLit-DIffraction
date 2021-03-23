@@ -24,8 +24,8 @@ const buttons = {
 const slit = { number: 5, width: 10, separation: 80, ignoreWidth: false }
 const wave = { length: 2, phase: 0, amplitude: 20 }
 const pos = { topViewXY: new Vec(1200, 600), grating: { x: 300, dx: 5 }, screen: { x: 900, dx: 4 }, phaseDiagram: new Vec(1000, 700) }
-const intensity = Array(pos.topViewXY.y).fill().map((_, i) => [i, 0, 0, 0])
-let intensityHistory = Array(pos.topViewXY.y).fill().map((_, i) => [i, 0, 0, 0])
+const intensity = Array(4).fill(0).map(c => Array(pos.topViewXY.y).fill(0))
+// let intensityHistory = Array(pos.topViewXY.y).fill().map((_, i) => [i, 0, 0, 0])
 
 let screenDisplacement = pos.topViewXY.y / 2 + 1
 let geo = getGeometry(screenDisplacement)
@@ -129,16 +129,16 @@ function addIntensity (y) {
   // console.log(intensity)
   for (let i = yInt - 4; i <= yInt + 4; i++) {
     if (i < pos.topViewXY.y / 2 && i > -pos.topViewXY.y / 2) {
-      intensity[i + pos.topViewXY.y / 2][1] = getIntensityAtDisplacement(i + pos.topViewXY.y / 2)
-      intensity[i + pos.topViewXY.y / 2][2] = getSingleSlitModulation(getGeometry(i + pos.topViewXY.y / 2).sin)
-      intensity[i + pos.topViewXY.y / 2][3] = getIntensityAtDisplacement(i + pos.topViewXY.y / 2) * getSingleSlitModulation(getGeometry(i + pos.topViewXY.y / 2).sin)
+      intensity[0][i + pos.topViewXY.y / 2] = getIntensityAtDisplacement(i + pos.topViewXY.y / 2)
+      intensity[1][i + pos.topViewXY.y / 2] = getSingleSlitModulation(getGeometry(i + pos.topViewXY.y / 2).sin)
+      intensity[2][i + pos.topViewXY.y / 2] = getIntensityAtDisplacement(i + pos.topViewXY.y / 2) * getSingleSlitModulation(getGeometry(i + pos.topViewXY.y / 2).sin)
     }
   }
 }
 
 function recordIntensites () {
   console.log('intensity recorded')
-  intensityHistory = intensity.map(a => a[3])
+  intensity[3] = intensity[2].map(a => a)
   update()
 }
 
@@ -154,22 +154,15 @@ function drawBackground (c = bx) {
   c.strokeStyle = 'black'
   c.strokeRect(0, 0, c.canvas.width, c.canvas.height)
   c.strokeRect(0, 0, ...pos.topViewXY)
+  c.strokeRect(pos.screen.x, 0, pos.screen.dx, pos.topViewXY.y)
   blocks.forEach(([y1, y2], i, a) => {
     c.fillRect(pos.grating.x - pos.grating.dx, y1, pos.grating.dx * 2, y2 - y1)
   })
-  c.strokeRect(pos.screen.x, 0, pos.screen.dx, pos.topViewXY.y)
 
-  // intensity pattern
-  // console.log(intensity)
-  intensity.forEach((v, i, a) => {
-    if (v[1]) { drawLine(c, pos.screen.x - v[1] * wave.amplitude, v[0], Math.max(v[1] * 0.1, 3), 0, 'rgba(255, 0, 0, 0.4)') }
-    if (v[2]) { drawLine(c, pos.screen.x - v[2] * wave.amplitude, v[0], 3, 0, 'rgba(0, 255, 0, 0.4)') }
-    if (v[3]) { drawLine(c, pos.screen.x - v[3] * wave.amplitude, v[0], Math.max(v[3], 3), 0, 'black') }
-  })
-  c.stroke()
-
-  drawTrace(c, intensityHistory, pos.screen.x - 100, 0, undefined, 0, 1, -wave.amplitude, 0)
-
+  drawTrace(c, intensity[0], pos.screen.x, 0, 'rgba(255, 0, 0, 0.4)', 0, 1, -wave.amplitude, 0)
+  drawTrace(c, intensity[1], pos.screen.x, 0, 'rgba(0, 255, 0, 0.4)', 0, 1, -wave.amplitude, 0)
+  drawTrace(c, intensity[2], pos.screen.x, 0, 'black', 0, 1, -wave.amplitude, 0)
+  drawTrace(c, intensity[3], pos.screen.x - 100, 0, undefined, 0, 1, -wave.amplitude, 0)
 }
 
 function drawForground (c = fx, sd = slitData, sumOfComponents = resultantData) {
@@ -273,8 +266,10 @@ function drawTrace (cx, array, startX = 0, startY = 0, colour = 'rgba(0, 0, 0, 0
   cx.beginPath()
   cx.moveTo(startX, startY)
   cx.strokeStyle = colour
-  intensityHistory.forEach((v, i) => {
-    cx.lineTo(startX + dx * i + vx * v, startY + dy * i + vy * v)
+  array.forEach((v, i, a) => {
+    if (v * a[i - 1] === 0) {
+      cx.moveTo(startX + dx * i + vx * v, startY + dy * i + vy * v)
+    } else { cx.lineTo(startX + dx * i + vx * v, startY + dy * i + vy * v) }
   })
   cx.stroke()
 }
