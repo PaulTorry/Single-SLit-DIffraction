@@ -114,26 +114,22 @@ function getSingleSlitModulation (sin = geo.sin, w = slit.width) {
   return Math.abs(Math.sin((slit.width) * 0.5 * (sin / wave.length)) * 4 / (slit.width * sin))
 }
 
-function getIntensityAtDisplacement (d) {
-  return getResultantData(getGeometry(d).sin).mag
-}
+// const edges = centres.map((v) => [v - width / 2, v + width / 2])
 
 function makeBlocks ({ centres: c, firstSlit: f } = slitData, w = slit.width, vSize = pos.topViewXY.y) {
   const blocks = [0].concat(c.map((v) => v + f - w / 2)).concat(c.map((v) => v + f + w / 2)).concat([vSize]).sort((a, b) => a - b)
   return blocks.reduce(arrayFuncs.pack2, [])
 }
 
-function addIntensity (y, screenD = screenDisplacement) {
-  const yInt = Number.parseInt(geo.d)
-  //console.log(intensity)
-  for (let i = yInt - 4; i <= yInt + 4; i++) {
-    if (i < pos.topViewXY.y / 2 && i > -pos.topViewXY.y / 2) {
-      const sinOfDeflection = getGeometry(i + pos.topViewXY.y / 2).sin
+function addIntensity (screenD = screenDisplacement) {
+  for (let i = screenD - 4; i <= screenD + 4; i++) {
+    if (i > 0 && i < pos.topViewXY.y) {
+      const sinOfDeflection = getGeometry(i).sin
       const intensityAtDisplacement = getResultantData(sinOfDeflection).mag
       const singleSlitModulation = getSingleSlitModulation(sinOfDeflection)
-      intensity[0][i + pos.topViewXY.y / 2] = intensityAtDisplacement
-      intensity[1][i + pos.topViewXY.y / 2] = singleSlitModulation
-      intensity[2][i + pos.topViewXY.y / 2] = intensityAtDisplacement * singleSlitModulation
+      intensity[0][i] = intensityAtDisplacement
+      intensity[1][i] = singleSlitModulation
+      intensity[2][i] = intensityAtDisplacement * singleSlitModulation
     }
   }
 }
@@ -221,10 +217,6 @@ function drawForground (c = fx, sd = slitData, sumOfComponents = resultantData) 
   const fills = sd.edges.map(([yy, yyy], i, a) => [-yy * geo.sin, -yyy * geo.sin + yy * geo.sin, colours(i)])
 
   newSin(c, wave, 100, pos.topViewXY.y + 100, 600, pos.grating.x, 4, 0, 'black', fills)
-
-  // const fills = sd.edges.forEach(([yy, yyy], i, a)=> [yy * geo.sin, 3, colours(i)])
-
-  // -yy * geo.sin, -yyy * geo.sin
 
   const finalPhasor = sumOfComponents.scale(wave.amplitude * singleSlitModulation)
 
