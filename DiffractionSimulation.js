@@ -1,5 +1,5 @@
 /* global
-Vec, requestAnimationFrame, arrayFuncs
+Vec, requestAnimationFrame, arrayFuncs, Ray, Grating
 */
 const colours = (i, o = 1) => {
   const colourArray = [[73, 137, 171], [73, 171, 135], [73, 171, 96], [135, 171, 73], [171, 166, 73], [171, 146, 73]]
@@ -12,6 +12,7 @@ const cx = canvas.getContext('2d')
 const fx = document.querySelector('#forground').getContext('2d')
 const bx = document.querySelector('#background').getContext('2d')
 const animate = { run: false, notPaused: true }
+
 const sliders = {
   wave: { s: document.getElementById('wavelengthSlide'), t: document.getElementById('wavelengthText') },
   slits: { s: document.getElementById('slitsSlide'), t: document.getElementById('slitsText') },
@@ -21,9 +22,10 @@ const sliders = {
 const buttons = {
   record: document.getElementById('rec')
 }
+
 const slit = { number: 5, width: 10, separation: 80, ignoreWidth: false }
 const wave = { length: 2, phase: 0, amplitude: 20 }
-const pos = { topViewXY: new Vec(1200, 600), grating: { x: 300, dx: 5 }, screen: { x: 900, dx: 4 }, phaseDiagram: new Vec(1000, 700) }
+const pos = { topViewXY: new Vec(1200, 600), grating: { x: 0, dx: 5 }, screen: { x: 900, dx: 4 }, phaseDiagram: new Vec(1000, 700) }
 const intensity = Array(4).fill(0).map(c => Array(pos.topViewXY.y).fill(0))
 // let intensityHistory = Array(pos.topViewXY.y).fill().map((_, i) => [i, 0, 0, 0])
 
@@ -34,6 +36,7 @@ let slitData = getSlitData()
 let resultantData = getResultantData(slitData)
 let singleSlitModulation = getSingleSlitModulation()
 let blocks = makeBlocks()
+let ray = new Ray(new Grating(slit.number, slit.width, slit.separation, pos.topViewXY.y), screenDisplacement - pos.topViewXY.y / 2, pos.screen.x - pos.grating.x, wave)
 
 const sliderHandlers = {
   wave: (e, v = sliders.wave.s.valueAsNumber) => {
@@ -98,7 +101,7 @@ function getSlitData ({ number, width, separation } = slit, { phase, length } = 
 function getGeometry (screenD = screenDisplacement) {
   const d = screenD - pos.topViewXY.y / 2
   const D = pos.screen.x - pos.grating.x
-  const theta = Math.atan((-d) / (pos.screen.x - pos.grating.x))
+  const theta = Math.atan(-d / D)
   const l = Math.sqrt(D * D + d * d)
   const sin = d / l
   const cos = D / l
@@ -174,7 +177,12 @@ function drawForground (c = fx, sd = slitData, sumOfComponents = resultantData) 
 
   // waves, phasors at slit and at path difference
   let arrowStart = new Vec(0, 0)
-  sd.edges.forEach(([yy, yyy], i, a) => {
+
+  const e = ray.grating.edges
+
+  e.forEach(([yy, yyy], i, a) => {
+    // ray.print(i)
+
     const slitTop = new Vec(pos.grating.x, yy + sd.firstSlit)
     const slitBottom = new Vec(pos.grating.x, yyy + sd.firstSlit)
     const phaseAtGrating = -wave.phase + pos.grating.x / wave.length
@@ -193,6 +201,8 @@ function drawForground (c = fx, sd = slitData, sumOfComponents = resultantData) 
     const lengthOfIntegral = Math.sin((yyy - yy) * 0.5 * (geo.sin / wave.length)) * 10 / (slit.width * geo.sin)
     const lengthOfIntegral2 = getSingleSlitModulation()
     const phasorToAdd = integralPh
+
+    console.log(ph, ray.edgePhasors[i][0])
 
     // on angled sin curve
     drawLine(c, ...slitTop.add(Vec.unitX.rotate(geo.theta).scale(-yy * geo.sin)), ...ph.scale(wave.amplitude))
@@ -280,8 +290,11 @@ function update () {
   updateScreen()
 }
 
+// class Grating {  constructor (number = 2, width = 1, separation = 2, vSize = 100) {}}
+// class Ray {  constructor (grating = new Grating(), d = 1, D = 100, wave = { length: 2, phase: 0, amplitude: 20 }) {} }
+
 function updateVars () {
-  
+  ray = new Ray(new Grating(slit.number, slit.width, slit.separation, pos.topViewXY.y), screenDisplacement - pos.topViewXY.y / 2, pos.screen.x - pos.grating.x, wave)
   slitData = getSlitData()
   resultantData = getResultantData()
   singleSlitModulation = getSingleSlitModulation()
