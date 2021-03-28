@@ -9,12 +9,16 @@ class Grating {
     this.centres = Array(Number.parseInt(number)).fill().map((_, i) => i * (separation) + width / 2)
     this.edges = this.centres.map((v) => [v - width / 2, v + width / 2])
   }
+
+  update (n = this.number, w = this.width, s = this.separation, vSize = this.vSize) {
+    return new Grating(n, w, s, vSize)
+  }
 }
 
 class Ray {
   constructor (grating = new Grating(), d = 1, D = 100, wave = { length: 2, phase: 0, amplitude: 20 }) {
-    this.length = grating.number
     this.grating = grating; this.wave = wave
+    this.length = grating.number
     this.geo = Ray.getGeometry(d, D)
     this.centerPhasors = grating.centres.map(c => Vec.fromCircularCoords(1, -wave.phase + c * this.geo.sin / wave.length))
     this.edgePhasors = grating.edges.map(c => c.map(cc => Vec.fromCircularCoords(1, -wave.phase + cc * this.geo.sin / wave.length)))
@@ -28,6 +32,10 @@ class Ray {
   getDataForSlit (i = 0) { return { sin: this.geo.sin, edges: this.grating.edges[i], ePh: this.edgePhasors[i], res: this.resultant } }
 
   print (i = 0) { console.log(this.geo.sin, this.grating.edges[i], this.edgePhasors[i], this.resultant) }
+
+  getRay (d = 1) {
+    return new Ray(this.grating, d, this.geo.D, this.wave)
+  }
 
   static getGeometry (d, D) {
     const theta = Math.atan(-d / D)

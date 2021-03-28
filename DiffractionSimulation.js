@@ -22,34 +22,34 @@ const sliders = {
 const buttons = {
   record: document.getElementById('rec')
 }
-
-const slit = { number: 5, width: 10, separation: 80, ignoreWidth: false }
+const pos = { topViewXY: new Vec(1200, 600), grating: { x: 300, dx: 5 }, screen: { x: 900, dx: 4 }, phaseDiagram: new Vec(1000, 700) }
+let slit = new Grating(5, 10, 80, pos.screen.x - pos.grating.x)
 const wave = { length: 2, phase: 0, amplitude: 20 }
-const pos = { topViewXY: new Vec(1200, 600), grating: { x: 0, dx: 5 }, screen: { x: 900, dx: 4 }, phaseDiagram: new Vec(1000, 700) }
+
 const intensity = Array(4).fill(0).map(c => Array(pos.topViewXY.y).fill(0))
 // let intensityHistory = Array(pos.topViewXY.y).fill().map((_, i) => [i, 0, 0, 0])
 
 let screenDisplacement = pos.topViewXY.y / 2 + 1
 let geo = getGeometry(screenDisplacement)
 
-let slitData = getSlitData()
-let resultantData = getResultantData(slitData)
+// let slit = slit
+let resultantData = getResultantData(slit)
 let singleSlitModulation = getSingleSlitModulation()
 let blocks = makeBlocks()
-let ray = new Ray(new Grating(slit.number, slit.width, slit.separation, pos.topViewXY.y), screenDisplacement - pos.topViewXY.y / 2, pos.screen.x - pos.grating.x, wave)
+let ray = new Ray(slit, screenDisplacement - pos.topViewXY.y / 2, pos.screen.x - pos.grating.x, wave)
 
 const sliderHandlers = {
   wave: (e, v = sliders.wave.s.valueAsNumber) => {
     if (v !== wave.length) { sliders.wave.t.textContent = v; wave.length = v; update(true) }
   },
   slits: (e, v = sliders.slits.s.valueAsNumber) => {
-    if (v !== slit.number) { sliders.slits.t.textContent = v; slit.number = v; update(true) }
+    if (v !== slit.number) { sliders.slits.t.textContent = v; slit = slit.update(v); update(true) }
   },
   slitSeparation: (e, v = sliders.slitSeparation.s.valueAsNumber) => {
-    if (v !== slit.separation) { sliders.slitSeparation.t.textContent = v; slit.separation = v; update(true) }
+    if (v !== slit.separation) { sliders.slitSeparation.t.textContent = v; slit = slit.update(undefined, undefined, v); update(true) }
   },
   slitWidth: (e, v = sliders.slitWidth.s.valueAsNumber) => {
-    if (v !== slit.width) { sliders.slitWidth.t.textContent = v; slit.width = v; update(true) }
+    if (v !== slit.width) { sliders.slitWidth.t.textContent = v; slit.width = v; slit.update(undefined, v); update(true) }
   }
 }
 
@@ -91,12 +91,12 @@ function addEventListeners () {
   })
 }
 
-function getSlitData ({ number, width, separation } = slit, { phase, length } = wave) {
-  const firstSlit = pos.topViewXY.y / 2 - ((number - 1) / 2) * (separation) - width / 2
-  const centres = Array(Number.parseInt(number)).fill().map((_, i) => i * (separation) + width / 2) // + firstSlit)
-  const edges = centres.map((v) => [v - width / 2, v + width / 2])
-  return { centres, edges, firstSlit }
-}
+// function getSlitData ({ number, width, separation } = slit, { phase, length } = wave) {
+//   const firstSlit = pos.topViewXY.y / 2 - ((number - 1) / 2) * (separation) - width / 2
+//   const centres = Array(Number.parseInt(number)).fill().map((_, i) => i * (separation) + width / 2) // + firstSlit)
+//   const edges = centres.map((v) => [v - width / 2, v + width / 2])
+//   return { centres, edges, firstSlit }
+// }
 
 function getGeometry (screenD = screenDisplacement) {
   const d = screenD - pos.topViewXY.y / 2
@@ -109,7 +109,7 @@ function getGeometry (screenD = screenDisplacement) {
   return { d, D, theta, l, sin, cos, tan }
 }
 
-function getResultantData (sin = geo.sin, sd = slitData, wideSlit = true) {
+function getResultantData (sin = geo.sin, sd = slit, wideSlit = true) {
   return sd.centres.reduce((p, c) => p.add(Vec.fromCircularCoords(1, -wave.phase + c * sin / wave.length + pos.grating.x / wave.length)), new Vec(0, 0))
 }
 
@@ -119,7 +119,7 @@ function getSingleSlitModulation (sin = geo.sin, w = slit.width) {
 
 // const edges = centres.map((v) => [v - width / 2, v + width / 2])
 
-function makeBlocks ({ centres: c, firstSlit: f } = slitData, w = slit.width, vSize = pos.topViewXY.y) {
+function makeBlocks ({ centres: c, firstSlit: f } = slit, w = slit.width, vSize = pos.topViewXY.y) {
   const blocks = [0].concat(c.map((v) => v + f - w / 2)).concat(c.map((v) => v + f + w / 2)).concat([vSize]).sort((a, b) => a - b)
   return blocks.reduce(arrayFuncs.pack2, [])
 }
@@ -127,12 +127,10 @@ function makeBlocks ({ centres: c, firstSlit: f } = slitData, w = slit.width, vS
 function addIntensity (screenD = screenDisplacement) {
   for (let i = screenD - 4; i <= screenD + 4; i++) {
     if (i > 0 && i < pos.topViewXY.y) {
-      const sinOfDeflection = getGeometry(i).sin
-      const intensityAtDisplacement = getResultantData(sinOfDeflection).mag
-      const singleSlitModulation = getSingleSlitModulation(sinOfDeflection)
-      intensity[0][i] = intensityAtDisplacement
-      intensity[1][i] = singleSlitModulation
-      intensity[2][i] = intensityAtDisplacement * singleSlitModulation
+      const thisRay = ray.getRay(i - pos.topViewXY.y / 2)
+      intensity[0][i] = thisRay.resultant.mag
+      intensity[1][i] = thisRay.singleSlitModulation
+      intensity[2][i] = thisRay.resultant.mag * thisRay.singleSlitModulation
     }
   }
 }
@@ -166,7 +164,7 @@ function drawBackground (c = bx) {
   drawTrace(c, intensity[3], pos.screen.x - 100, 0, undefined, 0, 1, -wave.amplitude, 0)
 }
 
-function drawForground (c = fx, sd = slitData, sumOfComponents = resultantData) {
+function drawForground (c = fx, sd = slit, sumOfComponents = resultantData) {
   c.clearRect(0, 0, c.canvas.width, c.canvas.height)
 
   // line from center of slits to screen
@@ -202,7 +200,7 @@ function drawForground (c = fx, sd = slitData, sumOfComponents = resultantData) 
     const lengthOfIntegral2 = getSingleSlitModulation()
     const phasorToAdd = integralPh
 
-    console.log(ph, ray.edgePhasors[i][0])
+    // console.log(ph, ray.edgePhasors[i][0])
 
     // on angled sin curve
     drawLine(c, ...slitTop.add(Vec.unitX.rotate(geo.theta).scale(-yy * geo.sin)), ...ph.scale(wave.amplitude))
@@ -294,8 +292,8 @@ function update () {
 // class Ray {  constructor (grating = new Grating(), d = 1, D = 100, wave = { length: 2, phase: 0, amplitude: 20 }) {} }
 
 function updateVars () {
-  ray = new Ray(new Grating(slit.number, slit.width, slit.separation, pos.topViewXY.y), screenDisplacement - pos.topViewXY.y / 2, pos.screen.x - pos.grating.x, wave)
-  slitData = getSlitData()
+  // slit = new Grating(slit.number, slit.width, slit.separation, pos.topViewXY.y)
+  ray = new Ray(slit, screenDisplacement - pos.topViewXY.y / 2, pos.screen.x - pos.grating.x, wave)
   resultantData = getResultantData()
   singleSlitModulation = getSingleSlitModulation()
   blocks = makeBlocks()
