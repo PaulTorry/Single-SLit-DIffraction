@@ -22,19 +22,14 @@ const sliders = {
 const buttons = {
   record: document.getElementById('rec')
 }
+
 const pos = { topViewXY: new Vec(1200, 600), grating: { x: 300, dx: 5 }, screen: { x: 900, dx: 4 }, phaseDiagram: new Vec(1000, 700) }
 let slit = new Grating(5, 10, 80, pos.screen.x - pos.grating.x)
 const wave = { length: 2, phase: 0, amplitude: 20 }
 
 const intensity = Array(4).fill(0).map(c => Array(pos.topViewXY.y).fill(0))
-// let intensityHistory = Array(pos.topViewXY.y).fill().map((_, i) => [i, 0, 0, 0])
 
 let screenDisplacement = pos.topViewXY.y / 2 + 1
-let geo = getGeometry(screenDisplacement)
-
-// let slit = slit
-let resultantData = getResultantData(slit)
-let singleSlitModulation = getSingleSlitModulation()
 let blocks = makeBlocks()
 let ray = new Ray(slit, screenDisplacement - pos.topViewXY.y / 2, pos.screen.x - pos.grating.x, wave)
 
@@ -49,7 +44,7 @@ const sliderHandlers = {
     if (v !== slit.separation) { sliders.slitSeparation.t.textContent = v; slit = slit.update(undefined, undefined, v); update(true) }
   },
   slitWidth: (e, v = sliders.slitWidth.s.valueAsNumber) => {
-    if (v !== slit.width) { sliders.slitWidth.t.textContent = v; slit.width = v; slit.update(undefined, v); update(true) }
+    if (v !== slit.width) { sliders.slitWidth.t.textContent = v; slit = slit.update(undefined, v); update(true) }
   }
 }
 
@@ -62,7 +57,6 @@ function addEventListeners () {
       wave.phase += (d.x) * 0.5 / wave.length
     } else if (16 * d.x * d.x < d.y * d.y) {
       screenDisplacement += d.y
-      geo = getGeometry(screenDisplacement)
       if (animate.run) {
         wave.phase = 0
       } else {
@@ -73,7 +67,6 @@ function addEventListeners () {
   }
   buttons.record.addEventListener('click', (e) => {
     recordIntensites()
-    // sliderHandlers.wave(e, 10)
   })
   sliders.wave.s.addEventListener('input', sliderHandlers.wave)
   sliders.slits.s.addEventListener('input', sliderHandlers.slits)
@@ -90,34 +83,6 @@ function addEventListeners () {
     }
   })
 }
-
-// function getSlitData ({ number, width, separation } = slit, { phase, length } = wave) {
-//   const firstSlit = pos.topViewXY.y / 2 - ((number - 1) / 2) * (separation) - width / 2
-//   const centres = Array(Number.parseInt(number)).fill().map((_, i) => i * (separation) + width / 2) // + firstSlit)
-//   const edges = centres.map((v) => [v - width / 2, v + width / 2])
-//   return { centres, edges, firstSlit }
-// }
-
-function getGeometry (screenD = screenDisplacement) {
-  const d = screenD - pos.topViewXY.y / 2
-  const D = pos.screen.x - pos.grating.x
-  const theta = Math.atan(-d / D)
-  const l = Math.sqrt(D * D + d * d)
-  const sin = d / l
-  const cos = D / l
-  const tan = d / D
-  return { d, D, theta, l, sin, cos, tan }
-}
-
-function getResultantData (sin = geo.sin, sd = slit, wideSlit = true) {
-  return sd.centres.reduce((p, c) => p.add(Vec.fromCircularCoords(1, -wave.phase + c * sin / wave.length + pos.grating.x / wave.length)), new Vec(0, 0))
-}
-
-function getSingleSlitModulation (sin = geo.sin, w = slit.width) {
-  return Math.abs(Math.sin((slit.width) * 0.5 * (sin / wave.length)) * 4 / (slit.width * sin))
-}
-
-// const edges = centres.map((v) => [v - width / 2, v + width / 2])
 
 function makeBlocks ({ centres: c, firstSlit: f } = slit, w = slit.width, vSize = pos.topViewXY.y) {
   const blocks = [0].concat(c.map((v) => v + f - w / 2)).concat(c.map((v) => v + f + w / 2)).concat([vSize]).sort((a, b) => a - b)
@@ -164,7 +129,7 @@ function drawBackground (c = bx) {
   drawTrace(c, intensity[3], pos.screen.x - 100, 0, undefined, 0, 1, -wave.amplitude, 0)
 }
 
-function drawForground (c = fx, sd = slit, sumOfComponents = resultantData) {
+function drawForground (c = fx, sd = slit, geo = ray.geo) {
   c.clearRect(0, 0, c.canvas.width, c.canvas.height)
 
   // line from center of slits to screen
@@ -176,47 +141,35 @@ function drawForground (c = fx, sd = slit, sumOfComponents = resultantData) {
   // waves, phasors at slit and at path difference
   let arrowStart = new Vec(0, 0)
 
-  const e = ray.grating.edges
-
-  e.forEach(([yy, yyy], i, a) => {
-    // ray.print(i)
-
-    const slitTop = new Vec(pos.grating.x, yy + sd.firstSlit)
-    const slitBottom = new Vec(pos.grating.x, yyy + sd.firstSlit)
-    const phaseAtGrating = -wave.phase + pos.grating.x / wave.length
+  ray.zipped.forEach(({ e: [top, bot], ep: [ph1, ph2], integral }, i, a) => {
+    const slitTop = new Vec(pos.grating.x, top + sd.firstSlit)
+    const slitBottom = new Vec(pos.grating.x, bot + sd.firstSlit)
 
     // sincurves at angles
-    newSin(c, wave, ...slitTop, geo.l / 2, pos.grating.x, 1, geo.theta, colours(i, 0.4))
-    newSin(c, wave, ...slitBottom, geo.l / 2, pos.grating.x, 1, geo.theta, colours(i), getSinFill(-yy * geo.sin, -yyy * geo.sin))
+    newSin(c, wave, ...slitTop, geo.l / 2, 0, 1, geo.theta, colours(i, 0.4))
+    newSin(c, wave, ...slitBottom, geo.l / 2, 0, 1, geo.theta, colours(i), getSinFill(-top * geo.sin, -bot * geo.sin))
 
     // phasor at grating
-    drawLine(c, ...slitTop, ...Vec.unitY.rotate(phaseAtGrating).scale(wave.amplitude))
-
-    // phasor at offset
-    const ph = Vec.fromCircularCoords(1, phaseAtGrating + yy * geo.sin / wave.length)
-    const ph2 = Vec.fromCircularCoords(1, phaseAtGrating + yyy * geo.sin / wave.length)
-    const integralPh = ph.integrateTo(ph2).scale(5 / (slit.width * geo.sin))
-    const lengthOfIntegral = Math.sin((yyy - yy) * 0.5 * (geo.sin / wave.length)) * 10 / (slit.width * geo.sin)
-    const lengthOfIntegral2 = getSingleSlitModulation()
-    const phasorToAdd = integralPh
-
-    // console.log(ph, ray.edgePhasors[i][0])
+    drawLine(c, ...slitTop, ...Vec.unitY.scale(wave.amplitude))
 
     // on angled sin curve
-    drawLine(c, ...slitTop.add(Vec.unitX.rotate(geo.theta).scale(-yy * geo.sin)), ...ph.scale(wave.amplitude))
-    drawLine(c, ...slitBottom.add(Vec.unitX.rotate(geo.theta).scale(-yyy * geo.sin)), ...ph2.scale(wave.amplitude))
+    drawLine(c, ...slitTop.add(Vec.unitX.rotate(geo.theta).scale(-top * geo.sin)), ...ph1.scale(wave.amplitude))
+    drawLine(c, ...slitBottom.add(Vec.unitX.rotate(geo.theta).scale(-bot * geo.sin)), ...ph2.scale(wave.amplitude))
     // vector at bottom
-    // drawLine(c, ...pos.phaseDiagram.addXY(-180, i * 40 - slit.number * 20 + 20), ...ph.scale(wave.amplitude), colours(i))
-    // drawLine(c, ...pos.phaseDiagram.addXY(-180, i * 40 - slit.number * 20 + 20), ...ph2.scale(wave.amplitude), colours(i))
-    drawLine(c, ...pos.phaseDiagram.addXY(-100, i * 40 - slit.number * 20 + 20), ...integralPh.scale(wave.amplitude), colours(i))
+    drawLine(c, ...pos.phaseDiagram.addXY(-100, i * 40 - slit.number * 20 + 20), ...integral.scale(wave.amplitude), colours(i))
     // vector added to sum
-    drawLine(c, ...arrowStart.add(pos.phaseDiagram), ...phasorToAdd.scale(wave.amplitude), colours(i))
-    arrowStart = arrowStart.add(phasorToAdd.scale(wave.amplitude))
+    drawLine(c, ...arrowStart.add(pos.phaseDiagram), ...integral.scale(wave.amplitude), colours(i))
+    arrowStart = arrowStart.add(integral.scale(wave.amplitude))
 
     // const integralPh = ph.integrateTo(ph2).scale(5 / (slit.width * geo.sin))
-    drawLine(c, ...pos.phaseDiagram.addXY(-100, i * 40 - slit.number * 20 + 20), ...integralPh.scale(wave.amplitude), colours(i))
-    drawLine(c, ...pos.phaseDiagram.addXY(-120, i * 40 - slit.number * 20 + 20), ...integralPh.normalise.scale(wave.amplitude).scale(lengthOfIntegral), colours(i))
-    drawLine(c, ...pos.phaseDiagram.addXY(-140, i * 40 - slit.number * 20 + 20), ...integralPh.normalise.scale(wave.amplitude).scale(lengthOfIntegral2), colours(i))
+    drawLine(c, ...pos.phaseDiagram.addXY(-100, i * 40 - slit.number * 20 + 20), ...integral.scale(wave.amplitude), colours(i))
+
+    // const lengthOfIntegral = Math.sin((bot - top) * 0.5 * (geo.sin / wave.length)) * 10 / (slit.width * geo.sin)
+    // const lengthOfIntegral2 = ray.singleSlitModulation
+
+    // console.log(ph, ray.edgePhasors[i][0])
+    // drawLine(c, ...pos.phaseDiagram.addXY(-120, i * 40 - slit.number * 20 + 20), ...integral.normalise.scale(wave.amplitude).scale(lengthOfIntegral), colours(i))
+    // drawLine(c, ...pos.phaseDiagram.addXY(-140, i * 40 - slit.number * 20 + 20), ...integral.normalise.scale(wave.amplitude).scale(lengthOfIntegral2), colours(i))
   })
 
   // bottom wave with areas
@@ -226,13 +179,13 @@ function drawForground (c = fx, sd = slit, sumOfComponents = resultantData) {
 
   newSin(c, wave, 100, pos.topViewXY.y + 100, 600, pos.grating.x, 4, 0, 'black', fills)
 
-  const finalPhasor = sumOfComponents.scale(wave.amplitude * singleSlitModulation)
+  const finalPhasor = ray.resultant.scale(wave.amplitude * ray.singleSlitModulation)
 
-  drawLine(c, ...pos.phaseDiagram.addXY(100, 0), ...finalPhasor, 'black')
+  drawLine(c, ...pos.phaseDiagram.addXY(100, 0), ...finalPhasor, 'black') 
 
   // Resultant sin wave and phasor at right
-  const newWave = { amplitude: wave.amplitude * sumOfComponents.mag * singleSlitModulation, length: wave.length, phase: sumOfComponents.phase - Math.PI / 2 }
-  newSin(c, newWave, pos.screen.x, screenDisplacement, wave.phase * wave.length, 0, 1, 0, 'black')
+  const newWave2 = { amplitude: wave.amplitude * ray.resultant.mag * ray.singleSlitModulation, length: wave.length, phase: ray.resultant.phase - Math.PI / 2 }
+  newSin(c, newWave2, pos.screen.x, screenDisplacement, wave.phase * wave.length, 0, 1, 0, 'black')
   drawLine(c, pos.screen.x, screenDisplacement, ...finalPhasor, 'black')
 }
 
@@ -288,14 +241,8 @@ function update () {
   updateScreen()
 }
 
-// class Grating {  constructor (number = 2, width = 1, separation = 2, vSize = 100) {}}
-// class Ray {  constructor (grating = new Grating(), d = 1, D = 100, wave = { length: 2, phase: 0, amplitude: 20 }) {} }
-
 function updateVars () {
-  // slit = new Grating(slit.number, slit.width, slit.separation, pos.topViewXY.y)
   ray = new Ray(slit, screenDisplacement - pos.topViewXY.y / 2, pos.screen.x - pos.grating.x, wave)
-  resultantData = getResultantData()
-  singleSlitModulation = getSingleSlitModulation()
   blocks = makeBlocks()
 }
 
@@ -305,17 +252,14 @@ function updateScreen () {
   drawScreen()
 }
 
-// const vec = new Vec(-1, -2)
-// console.log(vec, vec.rotate(Math.PI / 2), vec.rotate90(1))
-
 addEventListeners()
 
 function animateIt (time, lastTime) {
   if (lastTime != null & animate.run & animate.notPaused) {
-    const prePhase = resultantData.phase
+    const prePhase = ray.resultant.phase
     wave.phase += (time - lastTime) * 0.003
     updateVars()
-    if (prePhase > 0 && resultantData.phase < 0) {
+    if (prePhase > 0 && ray.resultant.phase < 0) {
       addIntensity()
     }
     updateScreen()
