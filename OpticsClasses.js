@@ -22,17 +22,20 @@ class Ray {
     this.geo = Ray.getGeometry(d, D)
     this.centerPhasors = grating.centres.map(c => Vec.fromCircularCoords(1, -wave.phase + c * this.geo.sin / wave.length))
     this.edgePhasors = grating.edges.map(c => c.map(cc => Vec.fromCircularCoords(1, -wave.phase + cc * this.geo.sin / wave.length)))
+    this.posOfPhasor = this.grating.edges.map(c => c.map(cc => Vec.unitX.rotate(this.geo.theta).scale(-cc * this.geo.sin)))
     this.phasorAtGrating = this.edgePhasors[0][0]
     this.integrals = this.edgePhasors.map(c => c[0].integrateTo(c[1]).scale(5 / (grating.width * this.geo.sin)))
     this.lengthOfIntegral = Math.sin((grating.edges[0][1] - grating.edges[0][0]) * 0.5 * (this.geo.sin / wave.length)) * 10 / (grating.width * this.geo.sin)
     this.resultant = grating.centres.reduce((p, c) => p.add(Vec.fromCircularCoords(1, -wave.phase + c * this.geo.sin / wave.length)), new Vec(0, 0))
     this.singleSlitModulation = wave.length * Math.abs(Math.sin((grating.width) * 0.5 * (this.geo.sin / wave.length)) * 4 / (grating.width * this.geo.sin))
     this.zipped = Array(this.length).fill().map((c, i, a) => {
-      return { e: this.grating.edges[i], ep: this.edgePhasors[i], integral: this.integrals[i] }
+      return { e: this.grating.edges[i], ep: this.edgePhasors[i], integral: this.integrals[i], posPonB: this.posOfPhasor[i] }
     })
   }
 
-  getDataForSlit (i = 0) { return { sin: this.geo.sin, edges: this.grating.edges[i], ePh: this.edgePhasors[i], res: this.resultant } }
+  getDataForSlit (i = 0) {
+    return { sin: this.geo.sin, edges: this.grating.edges[i], ePh: this.edgePhasors[i], res: this.resultant }
+  }
 
   print (i = 0) { console.log(this.geo.sin, this.grating.edges[i], this.edgePhasors[i], this.resultant) }
 

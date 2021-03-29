@@ -136,25 +136,25 @@ function drawForground (c = fx, sd = slit, geo = ray.geo) {
   drawLine(c, pos.grating.x, pos.topViewXY.y / 2, geo.D, geo.d)
 
   // waves arriving at grating
-  newSin(c, wave, 0, sd.firstSlit, pos.grating.x)
+  newSin(c, wave, pos.grating.x, sd.firstSlit, [-pos.grating.x, pos.grating.x])
 
   // waves, phasors at slit and at path difference
   let arrowStart = new Vec(0, 0)
 
-  ray.zipped.forEach(({ e: [top, bot], ep: [ph1, ph2], integral }, i, a) => {
+  ray.zipped.forEach(({ e: [top, bot], ep: [ph1, ph2], integral, posPonB: [p1, p2] }, i, a) => {
     const slitTop = new Vec(pos.grating.x, top + sd.firstSlit)
     const slitBottom = new Vec(pos.grating.x, bot + sd.firstSlit)
 
     // sincurves at angles
-    newSin(c, wave, ...slitTop, geo.l / 2, 0, 1, geo.theta, colours(i, 0.4))
-    newSin(c, wave, ...slitBottom, geo.l / 2, 0, 1, geo.theta, colours(i), getSinFill(-top * geo.sin, -bot * geo.sin))
+    newSin(c, wave, ...slitTop, [0, geo.l / 2], 0, 1, geo.theta, colours(i, 0.4))
+    newSin(c, wave, ...slitBottom, [0, geo.l / 2], 0, 1, geo.theta, colours(i), getSinFill(-top * geo.sin, -bot * geo.sin))
 
     // phasor at grating
     drawLine(c, ...slitTop, ...Vec.unitY.scale(wave.amplitude))
 
     // on angled sin curve
-    drawLine(c, ...slitTop.add(Vec.unitX.rotate(geo.theta).scale(-top * geo.sin)), ...ph1.scale(wave.amplitude))
-    drawLine(c, ...slitBottom.add(Vec.unitX.rotate(geo.theta).scale(-bot * geo.sin)), ...ph2.scale(wave.amplitude))
+    drawLine(c, ...slitTop.add(p1), ...ph1.scale(wave.amplitude))
+    drawLine(c, ...slitBottom.add(p2), ...ph2.scale(wave.amplitude))
     // vector at bottom
     drawLine(c, ...pos.phaseDiagram.addXY(-100, i * 40 - slit.number * 20 + 20), ...integral.scale(wave.amplitude), colours(i))
     // vector added to sum
@@ -177,31 +177,32 @@ function drawForground (c = fx, sd = slit, geo = ray.geo) {
 
   const fills = sd.edges.map(([yy, yyy], i, a) => [-yy * geo.sin, -yyy * geo.sin + yy * geo.sin, colours(i)])
 
-  newSin(c, wave, 100, pos.topViewXY.y + 100, 600, pos.grating.x, 4, 0, 'black', fills)
+  //newSin(c, wave, 100, pos.topViewXY.y + 300, [0, 600], pos.grating.x, 1, 0, 'black', fills)
+  newSin(c, wave, 300, 700, [-150, 700], 0, 4, 0, 'black', fills)
+  drawLine(c, 300, 600, 0, 200, 'black')
 
   const finalPhasor = ray.resultant.scale(wave.amplitude * ray.singleSlitModulation)
-
-  drawLine(c, ...pos.phaseDiagram.addXY(100, 0), ...finalPhasor, 'black') 
+  drawLine(c, ...pos.phaseDiagram.addXY(100, 0), ...finalPhasor, 'black')
 
   // Resultant sin wave and phasor at right
   const newWave2 = { amplitude: wave.amplitude * ray.resultant.mag * ray.singleSlitModulation, length: wave.length, phase: ray.resultant.phase - Math.PI / 2 }
-  newSin(c, newWave2, pos.screen.x, screenDisplacement, wave.phase * wave.length, 0, 1, 0, 'black')
+  newSin(c, newWave2, pos.screen.x, screenDisplacement, [0, wave.phase * wave.length], 0, 1, 0, 'black')
   drawLine(c, pos.screen.x, screenDisplacement, ...finalPhasor, 'black')
 }
 
-function newSin (c, w = wave, startX, startY, length, pd = 0, scale = 1, deflectionAngle = 0, colour = 'black', fill = [[0, 0, 'black']], trigFunc = Math.cos) {
+function newSin (c, w = wave, startX, startY, [start, length] = [0, 200], pd = 0, scale = 1, deflectionAngle = 0, colour = 'black', fill = [[0, 0, 'black']], trigFunc = Math.cos) {
   const dispAtX = (x, rectFunc = (a) => a) => rectFunc(w.amplitude * trigFunc(((x + pd)) / (w.length) - w.phase))
   const pageVec = (x, y) => new Vec(x, y).rotate(deflectionAngle).scale(scale).addXY(startX, startY)
   const plot = (x, dx, rectFunc) => {
     c.beginPath()
     c.moveTo(...pageVec(x, 0))
-    for (let dl = x; dl <= x + dx; dl += 1) {
+    for (let dl = x; dl <= x + dx; dl += 1 / scale) {
       c.lineTo(...pageVec(dl, dispAtX(dl, rectFunc)))
     }
     c.lineTo(...pageVec(x + dx, 0))
   }
   c.strokeStyle = colour
-  plot(0, length / scale)
+  plot(start / scale, length / scale)
   c.stroke()
 
   if (fill) {
