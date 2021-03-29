@@ -86,7 +86,7 @@ function addEventListeners () {
 
 function makeBlocks ({ centres: c, firstSlit: f } = slit, w = slit.width, vSize = pos.topViewXY.y) {
   const blocks = [0].concat(c.map((v) => v + f - w / 2)).concat(c.map((v) => v + f + w / 2)).concat([vSize]).sort((a, b) => a - b)
-  return blocks.reduce(arrayFuncs.pack2, [])
+  return blocks.reduce((ac, cv, i, ar) => i % 2 ? ac.concat([[ar[i - 1], ar[i]]]) : ac, [])
 }
 
 function addIntensity (screenD = screenDisplacement) {
