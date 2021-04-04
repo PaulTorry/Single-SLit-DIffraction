@@ -1,6 +1,8 @@
 /* eslint-disable no-unused-vars */
 /* global Vec */
 
+import { Vec } from '../Vec.js'
+
 class Grating {
   constructor (number = 2, width = 1, separation = 2, vSize = 100) {
     this.vSize = vSize
@@ -52,3 +54,5 @@ class Ray {
     return { d, D, theta, l, sin, cos, tan }
   }
 }
+
+export { Grating, Ray }

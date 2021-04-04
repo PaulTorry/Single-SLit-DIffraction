@@ -64,9 +64,12 @@ class Vec {
   // }
 
   // static zero = new Vec(0, 0)
-  // static unit = new Vec(1, 1)
+  // static unitY = new Vec(0, 1)
+  // static unitX = new Vec(1, 0)
 }
 // Standard javascipt doesnt yet support staic variables
 Vec.zero = new Vec(0, 0)
 Vec.unitY = new Vec(0, 1)
 Vec.unitX = new Vec(1, 0)
+
+export { Vec }

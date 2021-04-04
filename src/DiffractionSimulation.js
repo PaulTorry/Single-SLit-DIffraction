@@ -1,12 +1,18 @@
-/* global
-Vec, requestAnimationFrame, arrayFuncs, Ray, Grating
-*/
+/* global requestAnimationFrame */
+
+import { Vec } from './Vec.js'
+import { Grating, Ray } from './Model/OpticsClasses.js'
+import { drawLine, drawTrace, newSin } from './View/drawFunctions.js'
+
+// console.log('Vec.unitX')
+
 const colours = (i, o = 1) => {
   const colourArray = [[73, 137, 171], [73, 171, 135], [73, 171, 96], [135, 171, 73], [171, 166, 73], [171, 146, 73]]
   const col = 'rgba(' + colourArray[i][0] + ',' + colourArray[i][1] + ',' + colourArray[i][2] + ',' + o + ')'
   return col
 }
 const getSinFill = (a, b) => [[a, b - a, 'blue', (a) => Math.max(a, 0)], [a, b - a, 'red', (a) => Math.min(a, 0)]]
+
 const canvas = document.querySelector('#screen') // ('canvas')
 const cx = canvas.getContext('2d')
 const fx = document.querySelector('#forground').getContext('2d')
@@ -163,13 +169,6 @@ function drawForground (c = fx, sd = slit, geo = ray.geo) {
 
     // const integralPh = ph.integrateTo(ph2).scale(5 / (slit.width * geo.sin))
     drawLine(c, ...pos.phaseDiagram.addXY(-100, i * 40 - slit.number * 20 + 20), ...integral.scale(wave.amplitude), colours(i))
-
-    // const lengthOfIntegral = Math.sin((bot - top) * 0.5 * (geo.sin / wave.length)) * 10 / (slit.width * geo.sin)
-    // const lengthOfIntegral2 = ray.singleSlitModulation
-
-    // console.log(ph, ray.edgePhasors[i][0])
-    // drawLine(c, ...pos.phaseDiagram.addXY(-120, i * 40 - slit.number * 20 + 20), ...integral.normalise.scale(wave.amplitude).scale(lengthOfIntegral), colours(i))
-    // drawLine(c, ...pos.phaseDiagram.addXY(-140, i * 40 - slit.number * 20 + 20), ...integral.normalise.scale(wave.amplitude).scale(lengthOfIntegral2), colours(i))
   })
 
   // bottom wave with areas
@@ -177,7 +176,7 @@ function drawForground (c = fx, sd = slit, geo = ray.geo) {
 
   const fills = sd.edges.map(([yy, yyy], i, a) => [-yy * geo.sin, -yyy * geo.sin + yy * geo.sin, colours(i)])
 
-  //newSin(c, wave, 100, pos.topViewXY.y + 300, [0, 600], pos.grating.x, 1, 0, 'black', fills)
+  // newSin(c, wave, 100, pos.topViewXY.y + 300, [0, 600], pos.grating.x, 1, 0, 'black', fills)
   newSin(c, wave, 300, 700, [-150, 700], 0, 4, 0, 'black', fills)
   drawLine(c, 300, 600, 0, 200, 'black')
 
@@ -188,53 +187,6 @@ function drawForground (c = fx, sd = slit, geo = ray.geo) {
   const newWave2 = { amplitude: wave.amplitude * ray.resultant.mag * ray.singleSlitModulation, length: wave.length, phase: ray.resultant.phase - Math.PI / 2 }
   newSin(c, newWave2, pos.screen.x, screenDisplacement, [0, wave.phase * wave.length], 0, 1, 0, 'black')
   drawLine(c, pos.screen.x, screenDisplacement, ...finalPhasor, 'black')
-}
-
-function newSin (c, w = wave, startX, startY, [start, length] = [0, 200], pd = 0, scale = 1, deflectionAngle = 0, colour = 'black', fill = [[0, 0, 'black']], trigFunc = Math.cos) {
-  const dispAtX = (x, rectFunc = (a) => a) => rectFunc(w.amplitude * trigFunc(((x + pd)) / (w.length) - w.phase))
-  const pageVec = (x, y) => new Vec(x, y).rotate(deflectionAngle).scale(scale).addXY(startX, startY)
-  const plot = (x, dx, rectFunc) => {
-    c.beginPath()
-    c.moveTo(...pageVec(x, 0))
-    for (let dl = x; dl <= x + dx; dl += 1 / scale) {
-      c.lineTo(...pageVec(dl, dispAtX(dl, rectFunc)))
-    }
-    c.lineTo(...pageVec(x + dx, 0))
-  }
-  c.strokeStyle = colour
-  plot(start / scale, length / scale)
-  c.stroke()
-
-  if (fill) {
-    for (const [x, dx, col, func] of fill) {
-      c.fillStyle = col
-      plot(x, dx, func)
-      c.stroke()
-      c.fill()
-    }
-  }
-}
-
-function drawLine (c, x1, y1, dx, dy, color) {
-  if (color) { c.strokeStyle = color }
-  c.beginPath()
-  c.moveTo(x1, y1)
-  c.lineTo(x1 + dx, y1 + dy)
-  c.stroke()
-  c.fill()
-  c.beginPath()
-}
-
-function drawTrace (cx, array, startX = 0, startY = 0, colour = 'rgba(0, 0, 0, 0.4)', dx = 0, dy = 1, vx = 1, vy = 0) {
-  cx.beginPath()
-  cx.moveTo(startX, startY)
-  cx.strokeStyle = colour
-  array.forEach((v, i, a) => {
-    if (v * a[i - 1] === 0) {
-      cx.moveTo(startX + dx * i + vx * v, startY + dy * i + vy * v)
-    } else { cx.lineTo(startX + dx * i + vx * v, startY + dy * i + vy * v) }
-  })
-  cx.stroke()
 }
 
 function update () {
