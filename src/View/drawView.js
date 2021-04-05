@@ -10,22 +10,22 @@ const getSinFill = (a, b) => [[a, b - a, 'blue', (a) => Math.max(a, 0)], [a, b -
 
 // Draw foreground
 
-function drawForground (c, sd, r, wave, pos, slit, screenDisplacement) {
-  const geo = r.geo
+function drawForground (c, slit, ray, wave, pos, screenDisplacement) {
+  const geo = ray.geo
   c.clearRect(0, 0, c.canvas.width, c.canvas.height)
 
   // line from center of slits to screen
   drawLine(c, pos.grating.x, pos.topViewXY.y / 2, geo.D, geo.d)
 
   // waves arriving at grating
-  newSin(c, wave, pos.grating.x, sd.firstSlit, [-pos.grating.x, pos.grating.x])
+  newSin(c, wave, pos.grating.x, slit.firstSlit, [-pos.grating.x, pos.grating.x])
 
   // waves, phasors at slit and at path difference
   let arrowStart = new Vec(0, 0)
 
-  r.zipped.forEach(({ e: [top, bot], ep: [ph1, ph2], integral, posPonB: [p1, p2] }, i, a) => {
-    const slitTop = new Vec(pos.grating.x, top + sd.firstSlit)
-    const slitBottom = new Vec(pos.grating.x, bot + sd.firstSlit)
+  ray.zipped.forEach(({ e: [top, bot], ep: [ph1, ph2], integral, posPonB: [p1, p2] }, i, a) => {
+    const slitTop = new Vec(pos.grating.x, top + slit.firstSlit)
+    const slitBottom = new Vec(pos.grating.x, bot + slit.firstSlit)
 
     // sincurves at angles
     newSin(c, wave, ...slitTop, [0, geo.l / 2], 0, 1, geo.theta, colours(i, 0.4))
@@ -50,17 +50,17 @@ function drawForground (c, sd, r, wave, pos, slit, screenDisplacement) {
   // bottom wave with areas
   // const fills = sd.centres.map((yy, i, a) => [yy * geo.sin, 3, colours(i)])
 
-  const fills = sd.edges.map(([yy, yyy], i, a) => [-yy * geo.sin, -yyy * geo.sin + yy * geo.sin, colours(i)])
+  const fills = slit.edges.map(([yy, yyy], i, a) => [-yy * geo.sin, -yyy * geo.sin + yy * geo.sin, colours(i)])
 
   // newSin(c, wave, 100, pos.topViewXY.y + 300, [0, 600], pos.grating.x, 1, 0, 'black', fills)
   newSin(c, wave, 300, 700, [-150, 700], 0, 4, 0, 'black', fills)
   drawLine(c, 300, 600, 0, 200, 'black')
 
-  const finalPhasor = r.resultant.scale(wave.amplitude * r.singleSlitModulation)
+  const finalPhasor = ray.resultant.scale(wave.amplitude * ray.singleSlitModulation)
   drawLine(c, ...pos.phaseDiagram.addXY(100, 0), ...finalPhasor, 'black')
 
   // Resultant sin wave and phasor at right
-  const newWave2 = { amplitude: wave.amplitude * r.resultant.mag * r.singleSlitModulation, length: wave.length, phase: r.resultant.phase - Math.PI / 2 }
+  const newWave2 = { amplitude: wave.amplitude * ray.resultant.mag * ray.singleSlitModulation, length: wave.length, phase: ray.resultant.phase - Math.PI / 2 }
   newSin(c, newWave2, pos.screen.x, screenDisplacement, [0, wave.phase * wave.length], 0, 1, 0, 'black')
   drawLine(c, pos.screen.x, screenDisplacement, ...finalPhasor, 'black')
 }

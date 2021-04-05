@@ -6,7 +6,6 @@ import { drawForground, drawBackground } from './View/drawView.js'
 
 // console.log('Vec.unitX')
 
-
 const canvas = document.querySelector('#screen') // ('canvas')
 const cx = canvas.getContext('2d')
 const fx = document.querySelector('#forground').getContext('2d')
@@ -26,7 +25,6 @@ const buttons = {
 const pos = { topViewXY: new Vec(1200, 600), grating: { x: 300, dx: 5 }, screen: { x: 900, dx: 4 }, phaseDiagram: new Vec(1000, 700) }
 let slit = new Grating(5, 10, 80, pos.screen.x - pos.grating.x)
 const wave = { length: 2, phase: 0, amplitude: 20 }
-
 const intensity = Array(4).fill(0).map(c => Array(pos.topViewXY.y).fill(0))
 
 let screenDisplacement = pos.topViewXY.y / 2 + 1
@@ -123,9 +121,8 @@ function updateVars () {
 }
 
 function updateScreen () {
-  // (c, intensity, pos, amplitude, blocks)
   drawBackground(bx, intensity, pos, wave.amplitude, blocks)
-  drawForground(fx, slit, ray, wave, pos, slit, screenDisplacement)
+  drawForground(fx, slit, ray, wave, pos, screenDisplacement)
   drawScreen()
 }
 
@@ -141,10 +138,8 @@ function animateIt (time, lastTime) {
     }
     updateScreen()
   }
-  requestAnimationFrame(newTime => {
-    return animateIt(newTime, time)
-  })
+  requestAnimationFrame(newTime => animateIt(newTime, time))
 }
-requestAnimationFrame(animateIt)
 
+requestAnimationFrame(animateIt)
 update()
