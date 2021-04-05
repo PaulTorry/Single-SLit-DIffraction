@@ -246,4 +246,4 @@ function findSlitCenters (n, w, s, edge) {
   return centers
 }
 
-console.log(findSlitCenters(6, 1, 10, 200))
+// console.log(findSlitCenters(6, 1, 10, 200))

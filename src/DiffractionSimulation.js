@@ -4,8 +4,6 @@ import { Vec } from './Vec.js'
 import { Grating, Ray, IntensityPattern } from './Model/OpticsClasses.js'
 import { drawForground, drawBackground } from './View/drawView.js'
 
-// console.log('Vec.unitX')
-
 const canvas = document.querySelector('#screen') // ('canvas')
 const cx = canvas.getContext('2d')
 const fx = document.querySelector('#forground').getContext('2d')
@@ -27,7 +25,6 @@ let slit = new Grating(5, 10, 80, pos.screen.x - pos.grating.x)
 const wave = { length: 2, phase: 0, amplitude: 20 }
 const intensity = new IntensityPattern(pos.topViewXY.y)
 let screenDisplacement = pos.topViewXY.y / 2 + 1
-let blocks = makeBlocks()
 let ray = new Ray(slit, screenDisplacement - pos.topViewXY.y / 2, pos.screen.x - pos.grating.x, wave)
 
 const sliderHandlers = {
@@ -64,6 +61,7 @@ function addEventListeners () {
   }
   buttons.record.addEventListener('click', (e) => {
     intensity.recordIntensites(screenDisplacement, ray)
+    update()
   })
   sliders.wave.s.addEventListener('input', sliderHandlers.wave)
   sliders.slits.s.addEventListener('input', sliderHandlers.slits)
@@ -81,11 +79,6 @@ function addEventListeners () {
   })
 }
 
-function makeBlocks ({ centres: c, firstSlit: f } = slit, w = slit.width, vSize = pos.topViewXY.y) {
-  const blocks = [0].concat(c.map((v) => v + f - w / 2)).concat(c.map((v) => v + f + w / 2)).concat([vSize]).sort((a, b) => a - b)
-  return blocks.reduce((ac, cv, i, ar) => i % 2 ? ac.concat([[ar[i - 1], ar[i]]]) : ac, [])
-}
-
 function drawScreen () {
   cx.clearRect(0, 0, cx.canvas.width, cx.canvas.height)
   cx.drawImage(bx.canvas, 0, 0)
@@ -99,7 +92,6 @@ function update () {
 
 function updateVars () {
   ray = new Ray(slit, screenDisplacement - pos.topViewXY.y / 2, pos.screen.x - pos.grating.x, wave)
-  blocks = makeBlocks()
 }
 
 function updateScreen () {
