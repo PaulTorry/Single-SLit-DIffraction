@@ -26,9 +26,7 @@ const pos = { topViewXY: new Vec(1200, 600), grating: { x: 300, dx: 5 }, screen:
 let slit = new Grating(5, 10, 80, pos.screen.x - pos.grating.x)
 const wave = { length: 2, phase: 0, amplitude: 20 }
 const intensity = Array(4).fill(0).map(c => Array(pos.topViewXY.y).fill(0))
-
 let screenDisplacement = pos.topViewXY.y / 2 + 1
-let blocks = makeBlocks()
 let ray = new Ray(slit, screenDisplacement - pos.topViewXY.y / 2, pos.screen.x - pos.grating.x, wave)
 
 const sliderHandlers = {
@@ -65,6 +63,7 @@ function addEventListeners () {
   }
   buttons.record.addEventListener('click', (e) => {
     recordIntensites()
+    update()
   })
   sliders.wave.s.addEventListener('input', sliderHandlers.wave)
   sliders.slits.s.addEventListener('input', sliderHandlers.slits)
@@ -82,11 +81,6 @@ function addEventListeners () {
   })
 }
 
-function makeBlocks ({ centres: c, firstSlit: f } = slit, w = slit.width, vSize = pos.topViewXY.y) {
-  const blocks = [0].concat(c.map((v) => v + f - w / 2)).concat(c.map((v) => v + f + w / 2)).concat([vSize]).sort((a, b) => a - b)
-  return blocks.reduce((ac, cv, i, ar) => i % 2 ? ac.concat([[ar[i - 1], ar[i]]]) : ac, [])
-}
-
 function addIntensity (screenD = screenDisplacement) {
   for (let i = screenD - 4; i <= screenD + 4; i++) {
     if (i > 0 && i < pos.topViewXY.y) {
@@ -97,7 +91,6 @@ function addIntensity (screenD = screenDisplacement) {
     }
   }
 }
-
 function recordIntensites () {
   console.log('intensity recorded')
   intensity[3] = intensity[2].map(a => a)
@@ -117,11 +110,10 @@ function update () {
 
 function updateVars () {
   ray = new Ray(slit, screenDisplacement - pos.topViewXY.y / 2, pos.screen.x - pos.grating.x, wave)
-  blocks = makeBlocks()
 }
 
 function updateScreen () {
-  drawBackground(bx, intensity, pos, wave.amplitude, blocks)
+  drawBackground(bx, intensity, pos, wave.amplitude, slit)
   drawForground(fx, slit, ray, wave, pos, screenDisplacement)
   drawScreen()
 }

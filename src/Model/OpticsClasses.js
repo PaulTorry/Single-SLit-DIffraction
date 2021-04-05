@@ -7,7 +7,7 @@ class Grating {
   constructor (number = 2, width = 1, separation = 2, vSize = 100) {
     this.vSize = vSize
     this.number = number; this.width = width; this.separation = separation
-    this.firstSlit = vSize / 2 - ((number - 1) / 2) * (separation) - width / 2
+    this.firstSlit = -((number - 1) / 2) * (separation) - width / 2
     this.centres = Array(Number.parseInt(number)).fill().map((_, i) => i * (separation) + width / 2)
     this.edges = this.centres.map((v) => [v - width / 2, v + width / 2])
     console.log(this.centres, this.edges)
@@ -54,6 +54,27 @@ class Ray {
     const tan = d / D
     return { d, D, theta, l, sin, cos, tan }
   }
+}
+
+class IntensityPattern extends Array {
+  constructor (vSize) {
+    super(4)
+    this.fill(Array(vSize).fill(0))
+    this.vSize = vSize
+  }
+
+  addIntensity (screenD, ray) {
+    for (let i = screenD - 4; i <= screenD + 4; i++) {
+      if (i > 0 && i < this.vSize) {
+        const thisRay = ray.getRay(i - this.vSize / 2)
+        this[0][i] = thisRay.resultant.mag
+        this[1][i] = thisRay.singleSlitModulation
+        this[2][i] = thisRay.resultant.mag * thisRay.singleSlitModulation
+      }
+    }
+  }
+
+  recordIntensites () { this[3] = this[2].map(a => a) }
 }
 
 export { Grating, Ray }

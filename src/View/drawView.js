@@ -18,14 +18,14 @@ function drawForground (c, slit, ray, wave, pos, screenDisplacement) {
   drawLine(c, pos.grating.x, pos.topViewXY.y / 2, geo.D, geo.d)
 
   // waves arriving at grating
-  newSin(c, wave, pos.grating.x, slit.firstSlit, [-pos.grating.x, pos.grating.x])
+  newSin(c, wave, pos.grating.x, slit.firstSlit + pos.topViewXY.y / 2, [-pos.grating.x, pos.grating.x])
 
   // waves, phasors at slit and at path difference
   let arrowStart = new Vec(0, 0)
 
   ray.zipped.forEach(({ e: [top, bot], ep: [ph1, ph2], integral, posPonB: [p1, p2] }, i, a) => {
-    const slitTop = new Vec(pos.grating.x, top + slit.firstSlit)
-    const slitBottom = new Vec(pos.grating.x, bot + slit.firstSlit)
+    const slitTop = new Vec(pos.grating.x, top + slit.firstSlit + pos.topViewXY.y / 2)
+    const slitBottom = new Vec(pos.grating.x, bot + slit.firstSlit + pos.topViewXY.y / 2)
 
     // sincurves at angles
     newSin(c, wave, ...slitTop, [0, geo.l / 2], 0, 1, geo.theta, colours(i, 0.4))
@@ -65,7 +65,13 @@ function drawForground (c, slit, ray, wave, pos, screenDisplacement) {
   drawLine(c, pos.screen.x, screenDisplacement, ...finalPhasor, 'black')
 }
 
-function drawBackground (c, intensity, pos, amplitude, blocks) {
+function makeBlocks ({ edges: e, firstSlit: f, width: w }, vSize) {
+  const blocks = [0].concat(e.flat().map((v) => v + f + vSize / 2)).concat([vSize])
+  return blocks.reduce((ac, cv, i, ar) => i % 2 ? ac.concat([[ar[i - 1], ar[i]]]) : ac, [])
+}
+
+function drawBackground (c, intensity, pos, amplitude, slit) {
+  const blocks = makeBlocks(slit, pos.topViewXY.y)
   c.clearRect(0, 0, c.canvas.width, c.canvas.height)
   c.fillStyle = 'lightgrey'
   c.strokeStyle = 'black'
