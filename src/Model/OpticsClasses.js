@@ -7,7 +7,7 @@ class Grating {
   constructor (number = 2, width = 1, separation = 2, vSize = 100) {
     this.vSize = vSize
     this.number = number; this.width = width; this.separation = separation
-    this.firstSlit = vSize / 2 - ((number - 1) / 2) * (separation) - width / 2
+    this.firstSlit = -((number - 1) / 2) * (separation) - width / 2
     this.centres = Array(Number.parseInt(number)).fill().map((_, i) => i * (separation) + width / 2)
     this.edges = this.centres.map((v) => [v - width / 2, v + width / 2])
     console.log(this.centres, this.edges)

@@ -1,7 +1,7 @@
 /* global requestAnimationFrame */
 
 import { Vec } from './Vec.js'
-import { Grating, Ray } from './Model/OpticsClasses.js'
+import { Grating, Ray, IntensityPattern } from './Model/OpticsClasses.js'
 import { drawForground, drawBackground } from './View/drawView.js'
 
 // console.log('Vec.unitX')
@@ -25,8 +25,7 @@ const buttons = {
 const pos = { topViewXY: new Vec(1200, 600), grating: { x: 300, dx: 5 }, screen: { x: 900, dx: 4 }, phaseDiagram: new Vec(1000, 700) }
 let slit = new Grating(5, 10, 80, pos.screen.x - pos.grating.x)
 const wave = { length: 2, phase: 0, amplitude: 20 }
-const intensity = Array(4).fill(0).map(c => Array(pos.topViewXY.y).fill(0))
-
+const intensity = new IntensityPattern(pos.topViewXY.y)
 let screenDisplacement = pos.topViewXY.y / 2 + 1
 let blocks = makeBlocks()
 let ray = new Ray(slit, screenDisplacement - pos.topViewXY.y / 2, pos.screen.x - pos.grating.x, wave)
@@ -58,13 +57,13 @@ function addEventListeners () {
       if (animate.run) {
         wave.phase = 0
       } else {
-        if (wave.phase > 6) { addIntensity(screenDisplacement) }
+        if (wave.phase > 6) { intensity.addIntensity(screenDisplacement, ray) }
       }
     }
     update()
   }
   buttons.record.addEventListener('click', (e) => {
-    recordIntensites()
+    intensity.recordIntensites(screenDisplacement, ray)
   })
   sliders.wave.s.addEventListener('input', sliderHandlers.wave)
   sliders.slits.s.addEventListener('input', sliderHandlers.slits)
@@ -87,23 +86,6 @@ function makeBlocks ({ centres: c, firstSlit: f } = slit, w = slit.width, vSize 
   return blocks.reduce((ac, cv, i, ar) => i % 2 ? ac.concat([[ar[i - 1], ar[i]]]) : ac, [])
 }
 
-function addIntensity (screenD = screenDisplacement) {
-  for (let i = screenD - 4; i <= screenD + 4; i++) {
-    if (i > 0 && i < pos.topViewXY.y) {
-      const thisRay = ray.getRay(i - pos.topViewXY.y / 2)
-      intensity[0][i] = thisRay.resultant.mag
-      intensity[1][i] = thisRay.singleSlitModulation
-      intensity[2][i] = thisRay.resultant.mag * thisRay.singleSlitModulation
-    }
-  }
-}
-
-function recordIntensites () {
-  console.log('intensity recorded')
-  intensity[3] = intensity[2].map(a => a)
-  update()
-}
-
 function drawScreen () {
   cx.clearRect(0, 0, cx.canvas.width, cx.canvas.height)
   cx.drawImage(bx.canvas, 0, 0)
@@ -121,7 +103,7 @@ function updateVars () {
 }
 
 function updateScreen () {
-  drawBackground(bx, intensity, pos, wave.amplitude, blocks)
+  drawBackground(bx, intensity.values, pos, wave.amplitude, slit)
   drawForground(fx, slit, ray, wave, pos, screenDisplacement)
   drawScreen()
 }
@@ -134,7 +116,7 @@ function animateIt (time, lastTime) {
     wave.phase += (time - lastTime) * 0.003
     updateVars()
     if (prePhase > 0 && ray.resultant.phase < 0) {
-      addIntensity()
+      intensity.addIntensity(screenDisplacement, ray)
     }
     updateScreen()
   }
