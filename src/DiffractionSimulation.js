@@ -8,7 +8,6 @@ const canvas = document.querySelector('#screen') // ('canvas')
 const cx = canvas.getContext('2d')
 const fx = document.querySelector('#forground').getContext('2d')
 const bx = document.querySelector('#background').getContext('2d')
-const animate = { run: false, notPaused: true }
 
 const sliders = {
   wave: { s: document.getElementById('wavelengthSlide'), t: document.getElementById('wavelengthText') },
@@ -19,6 +18,8 @@ const sliders = {
 const buttons = {
   record: document.getElementById('rec')
 }
+
+const animate = { run: false, notPaused: true }
 
 const pos = { topViewXY: new Vec(1200, 600), grating: { x: 300, dx: 5 }, screen: { x: 900, dx: 4 }, phaseDiagram: new Vec(1000, 700) }
 let slit = new Grating(5, 10, 80, pos.screen.x - pos.grating.x)
@@ -54,7 +55,7 @@ function addEventListeners () {
       if (animate.run) {
         wave.phase = 0
       } else {
-        if (wave.phase > 6) { intensity.addIntensity(screenDisplacement, ray) }
+        if (wave.phase > 6) { intensity.addIntensity(ray, screenDisplacement - pos.topViewXY.y / 2) }
       }
     }
     update()
@@ -108,7 +109,7 @@ function animateIt (time, lastTime) {
     wave.phase += (time - lastTime) * 0.003
     updateVars()
     if (prePhase > 0 && ray.resultant.phase < 0) {
-      intensity.addIntensity(screenDisplacement, ray)
+      intensity.addIntensity(ray)
     }
     updateScreen()
   }

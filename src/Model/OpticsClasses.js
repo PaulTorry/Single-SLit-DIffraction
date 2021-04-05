@@ -62,7 +62,8 @@ class IntensityPattern {
     this.values = Array(4).fill(0).map(c => Array(vSize).fill(0))
   }
 
-  addIntensity (screenD, ray) {
+  addIntensity (ray, d = ray.d) {
+    const screenD = d + this.vSize / 2
     for (let i = screenD - 4; i <= screenD + 4; i++) {
       if (i > 0 && i < this.vSize) {
         const thisRay = ray.getRay(i - this.vSize / 2)
