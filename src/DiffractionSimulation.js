@@ -30,16 +30,16 @@ let ray = new Ray(slit, screenDisplacement - pos.topViewXY.y / 2, pos.screen.x -
 
 const sliderHandlers = {
   wave: (e, v = sliders.wave.s.valueAsNumber) => {
-    if (v !== wave.length) { sliders.wave.t.textContent = v; wave.length = v; update(true) }
+    if (v !== wave.length) { sliders.wave.t.textContent = v; wave.length = v; updateScreen(true) }
   },
   slits: (e, v = sliders.slits.s.valueAsNumber) => {
-    if (v !== slit.number) { sliders.slits.t.textContent = v; slit = slit.update(v); update(true) }
+    if (v !== slit.number) { sliders.slits.t.textContent = v; slit = slit.update(v); ray = ray.updateSlit(slit); updateScreen(true) }
   },
   slitSeparation: (e, v = sliders.slitSeparation.s.valueAsNumber) => {
-    if (v !== slit.separation) { sliders.slitSeparation.t.textContent = v; slit = slit.update(undefined, undefined, v); update(true) }
+    if (v !== slit.separation) { sliders.slitSeparation.t.textContent = v; slit = slit.update(undefined, undefined, v); updateScreen(true) }
   },
   slitWidth: (e, v = sliders.slitWidth.s.valueAsNumber) => {
-    if (v !== slit.width) { sliders.slitWidth.t.textContent = v; slit = slit.update(undefined, v); update(true) }
+    if (v !== slit.width) { sliders.slitWidth.t.textContent = v; slit = slit.update(undefined, v); updateScreen(true) }
   }
 }
 
@@ -52,25 +52,26 @@ function addEventListeners () {
       wave.phase += (d.x) * 0.5 / wave.length
     } else if (16 * d.x * d.x < d.y * d.y) {
       screenDisplacement += d.y
+      ray = new Ray(slit, screenDisplacement - pos.topViewXY.y / 2, pos.screen.x - pos.grating.x, wave)
       if (animate.run) {
         wave.phase = 0
       } else {
         if (wave.phase > 6) { intensity.addIntensity(ray, screenDisplacement - pos.topViewXY.y / 2) }
       }
     }
-    update()
+    updateScreen()
   }
   buttons.record.addEventListener('click', (e) => {
     intensity.recordIntensites(screenDisplacement, ray)
-    update()
+    updateScreen()
   })
   sliders.wave.s.addEventListener('input', sliderHandlers.wave)
   sliders.slits.s.addEventListener('input', sliderHandlers.slits)
   sliders.slitSeparation.s.addEventListener('input', sliderHandlers.slitSeparation)
   sliders.slitWidth.s.addEventListener('input', sliderHandlers.slitWidth)
-  canvas.addEventListener('mousedown', function (e) { mouseCoords = new Vec(e.offsetX, e.offsetY); animate.notPaused = false })
-  canvas.addEventListener('mouseup', function (e) { mouseCoords = undefined; animate.notPaused = true })
-  canvas.addEventListener('dblclick', function (e) { animate.run = !animate.run })
+  canvas.addEventListener('mousedown', e => { mouseCoords = new Vec(e.offsetX, e.offsetY); animate.notPaused = false })
+  canvas.addEventListener('mouseup', e => { mouseCoords = undefined; animate.notPaused = true })
+  canvas.addEventListener('dblclick', e => { animate.run = !animate.run })
   canvas.addEventListener('mousemove', (e) => {
     if (mouseCoords) {
       const b = new Vec(e.offsetX, e.offsetY)
@@ -86,14 +87,14 @@ function drawScreen () {
   cx.drawImage(fx.canvas, 0, 0)
 }
 
-function update () {
-  updateVars()
-  updateScreen()
-}
+// function updateScreen () {
+//   // updateVars()
+//   updateScreen()
+// }
 
-function updateVars () {
-  ray = new Ray(slit, screenDisplacement - pos.topViewXY.y / 2, pos.screen.x - pos.grating.x, wave)
-}
+// function updateVars () {
+//   // ray = new Ray(slit, screenDisplacement - pos.topViewXY.y / 2, pos.screen.x - pos.grating.x, wave)
+// }
 
 function updateScreen () {
   drawBackground(bx, intensity.values, pos, wave.amplitude, slit)
@@ -107,7 +108,7 @@ function animateIt (time, lastTime) {
   if (lastTime != null & animate.run & animate.notPaused) {
     const prePhase = ray.resultant.phase
     wave.phase += (time - lastTime) * 0.003
-    updateVars()
+    // updateVars()
     if (prePhase > 0 && ray.resultant.phase < 0) {
       intensity.addIntensity(ray)
     }
@@ -117,4 +118,5 @@ function animateIt (time, lastTime) {
 }
 
 requestAnimationFrame(animateIt)
-update()
+// update()
+updateScreen()

@@ -46,6 +46,10 @@ class Ray {
     return new Ray(this.grating, d, this.geo.D, this.wave)
   }
 
+  updateSlit (grating) {
+    return new Ray(grating, this.d, this.geo.D, this.wave)
+  }
+
   static getGeometry (d, D) {
     const theta = Math.atan(-d / D)
     const l = Math.sqrt(D * D + d * d)
