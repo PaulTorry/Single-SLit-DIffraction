@@ -56,4 +56,24 @@ class Ray {
   }
 }
 
-export { Grating, Ray }
+class IntensityPattern {
+  constructor (vSize) {
+    this.vSize = vSize
+    this.values = Array(4).fill(0).map(c => Array(vSize).fill(0))
+  }
+
+  addIntensity (screenD, ray) {
+    for (let i = screenD - 4; i <= screenD + 4; i++) {
+      if (i > 0 && i < this.vSize) {
+        const thisRay = ray.getRay(i - this.vSize / 2)
+        this.values[0][i] = thisRay.resultant.mag
+        this.values[1][i] = thisRay.singleSlitModulation
+        this.values[2][i] = thisRay.resultant.mag * thisRay.singleSlitModulation
+      }
+    }
+  }
+
+  recordIntensites () { this.values[3] = this.values[2].map(a => a) }
+}
+
+export { Grating, Ray, IntensityPattern }
