@@ -28,9 +28,9 @@ const pos = { topViewXY: new Vec(1200, 600), grating: { x: 300, dx: 5 }, screen:
 
 let slit = new Grating(5, 10, 80)
 const wave = { length: 2, phase: 0, amplitude: 20 }
-let displacment = 1
+let displacement = 1
+let ray = new Ray(slit, displacement, pos.screen.x - pos.grating.x, wave)
 
-let ray = new Ray(slit, displacment, pos.screen.x - pos.grating.x, wave)
 const intensity = new IntensityPattern(pos.topViewXY.y)
 
 addEventListeners()
@@ -45,7 +45,7 @@ function addEventListeners () {
     if (d.x * d.x > 16 * d.y * d.y || a.x < pos.grating.x || a.x > pos.screen.x || a.y > pos.topViewXY.y) {
       wave.phase += (d.x) * 0.5 / wave.length
     } else if (16 * d.x * d.x < d.y * d.y) {
-      displacment += d.y
+      displacement += d.y
       if (settings.record) { intensity.addIntensity(ray) }
       if (settings.animate.run && !settings.record) { wave.phase = 0 }
     }
@@ -100,7 +100,7 @@ function addEventListeners () {
 }
 
 function update () {
-  ray = new Ray(slit, displacment, pos.screen.x - pos.grating.x, wave)
+  ray = new Ray(slit, displacement, pos.screen.x - pos.grating.x, wave)
   drawBackground(bx, intensity.values, pos, wave.amplitude, slit)
   drawForground(fx, slit, ray, wave, pos)
   cx.clearRect(0, 0, cx.canvas.width, cx.canvas.height)
@@ -112,7 +112,7 @@ function animateIt (time, lastTime) {
   if (lastTime != null & settings.animate.run & settings.animate.notPaused) {
     const prePhase = ray.resultant.phase
     wave.phase += (time - lastTime) * 0.003
-    ray = ray.updatePhase(wave.phase)
+    // ray = ray.updatePhase(wave.phase)
     if (prePhase > 0 && ray.resultant.phase < 0) {
       intensity.addIntensity(ray)
     }
