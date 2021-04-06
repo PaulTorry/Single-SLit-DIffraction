@@ -1,20 +1,16 @@
-/* eslint-disable no-unused-vars */
-/* global Vec */
 
 import { Vec } from '../Vec.js'
 
 class Grating {
-  constructor (number = 2, width = 1, separation = 2, vSize = 100) {
-    this.vSize = vSize
+  constructor (number = 2, width = 1, separation = 2) {
     this.number = number; this.width = width; this.separation = separation
     this.firstSlit = -((number - 1) / 2) * (separation) - width / 2
     this.centres = Array(Number.parseInt(number)).fill().map((_, i) => i * (separation) + width / 2)
     this.edges = this.centres.map((v) => [v - width / 2, v + width / 2])
-    // console.log(this.centres, this.edges)
   }
 
-  update (n = this.number, w = this.width, s = this.separation, vSize = this.vSize) {
-    return new Grating(n, w, s, vSize)
+  update (n = this.number, w = this.width, s = this.separation) {
+    return new Grating(n, w, s)
   }
 }
 
@@ -42,13 +38,9 @@ class Ray {
 
   print (i = 0) { console.log(this.geo.sin, this.grating.edges[i], this.edgePhasors[i], this.resultant) }
 
-  getRay (d = 1) {
-    return new Ray(this.grating, d, this.geo.D, this.wave)
-  }
-
-  updateSlit (grating) {
-    return new Ray(grating, this.d, this.geo.D, this.wave)
-  }
+  getRay (d = 1) { return new Ray(this.grating, d, this.geo.D, this.wave) }
+  updateSlit (grating) { return new Ray(grating, this.geo.d, this.geo.D, this.wave) }
+  updatePhase (phase) { return new Ray(this.grating, this.geo.d, this.geo.D, { length: this.wave.length, phase: phase, ampltude: this.wave.amplitude }) }
 
   static getGeometry (d, D) {
     const theta = Math.atan(-d / D)
@@ -63,12 +55,12 @@ class Ray {
 class IntensityPattern {
   constructor (vSize) {
     this.vSize = vSize
-    this.values = Array(4).fill(0).map(c => Array(vSize).fill(0))
+    this.values = Array(5).fill(0).map(c => Array(vSize).fill(0))
   }
 
-  addIntensity (ray, d = ray.d) {
+  addIntensity (ray, d = ray.geo.d) {
     const screenD = d + this.vSize / 2
-    for (let i = screenD - 4; i <= screenD + 4; i++) {
+    for (let i = screenD - 400; i <= screenD + 400; i++) {
       if (i > 0 && i < this.vSize) {
         const thisRay = ray.getRay(i - this.vSize / 2)
         this.values[0][i] = thisRay.resultant.mag
@@ -78,7 +70,16 @@ class IntensityPattern {
     }
   }
 
-  recordIntensites () { this.values[3] = this.values[2].map(a => a) }
+  staleintensities () {
+    console.log('stale')
+    this.values[3] = this.values[2].map((c, i) => {
+      if (c > 0) return c
+      else return this.values[3][i]
+    })
+    this.values[2] = this.values[2].map(c => 0)
+  }
+
+  recordIntensites () { this.values[4] = this.values[2].map(a => a) }
 }
 
 export { Grating, Ray, IntensityPattern }

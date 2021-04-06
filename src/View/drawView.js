@@ -1,17 +1,18 @@
 import { Vec } from '../Vec.js'
 import { drawLine, drawTrace, newSin } from './drawFunctions.js'
 
-const colours = (i, o = 1) => {
+const colours = (i, opacity = 1) => {
   const colourArray = [[73, 137, 171], [73, 171, 135], [73, 171, 96], [135, 171, 73], [171, 166, 73], [171, 146, 73]]
-  const col = 'rgba(' + colourArray[i][0] + ',' + colourArray[i][1] + ',' + colourArray[i][2] + ',' + o + ')'
+  const col = 'rgba(' + colourArray[i][0] + ',' + colourArray[i][1] + ',' + colourArray[i][2] + ',' + opacity + ')'
   return col
 }
 const getSinFill = (a, b) => [[a, b - a, 'blue', (a) => Math.max(a, 0)], [a, b - a, 'red', (a) => Math.min(a, 0)]]
 
 // Draw foreground
 
-function drawForground (c, slit, ray, wave, pos, screenDisplacement) {
+function drawForground (c, slit, ray, wave, pos) {
   const geo = ray.geo
+  const screenDisplacement = geo.d + pos.topViewXY.y / 2
   c.clearRect(0, 0, c.canvas.width, c.canvas.height)
 
   // line from center of slits to screen
@@ -85,7 +86,8 @@ function drawBackground (c, intensity, pos, amplitude, slit) {
   drawTrace(c, intensity[0], pos.screen.x, 0, 'rgba(255, 0, 0, 0.4)', 0, 1, -amplitude, 0)
   drawTrace(c, intensity[1], pos.screen.x, 0, 'rgba(0, 255, 0, 0.4)', 0, 1, -amplitude, 0)
   drawTrace(c, intensity[2], pos.screen.x, 0, 'black', 0, 1, -amplitude, 0)
-  drawTrace(c, intensity[3], pos.screen.x - 100, 0, undefined, 0, 1, -amplitude, 0)
+  drawTrace(c, intensity[3], pos.screen.x, 0, 'rgba(0, 0, 0, 0.2)', 0, 1, -amplitude, 0)
+  drawTrace(c, intensity[4], pos.screen.x - 100, 0, undefined, 0, 1, -amplitude, 0)
 }
 
 export { drawForground, drawBackground }
