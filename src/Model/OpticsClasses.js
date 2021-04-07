@@ -60,13 +60,22 @@ class IntensityPattern {
 
   addIntensity (ray, d = ray.geo.d) {
     const screenD = d + this.vSize / 2
-    for (let i = screenD - 400; i <= screenD + 400; i++) {
+    for (let i = screenD - 3; i <= screenD + 3; i++) {
       if (i > 0 && i < this.vSize) {
         const thisRay = ray.getRay(i - this.vSize / 2)
         this.values[0][i] = thisRay.resultant.mag
         this.values[1][i] = thisRay.singleSlitModulation
         this.values[2][i] = thisRay.resultant.mag * thisRay.singleSlitModulation
       }
+    }
+  }
+
+  addAllIntensities (ray) {
+    for (let i = 0; i <= this.vSize; i++) {
+      const thisRay = ray.getRay(i - this.vSize / 2)
+      this.values[0][i] = thisRay.resultant.mag
+      this.values[1][i] = thisRay.singleSlitModulation
+      this.values[2][i] = thisRay.resultant.mag * thisRay.singleSlitModulation
     }
   }
 
@@ -78,6 +87,8 @@ class IntensityPattern {
     })
     this.values[2] = this.values[2].map(c => 0)
   }
+
+  clear () { this.values = Array(5).fill(0).map(c => Array(this.vSize).fill(0)) }
 
   recordIntensites () { this.values[4] = this.values[2].map(a => a) }
 }

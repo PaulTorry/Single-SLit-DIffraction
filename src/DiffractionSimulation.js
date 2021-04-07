@@ -17,13 +17,16 @@ const sliders = {
 }
 const checkboxes = {
   animate: document.getElementById('anim'),
-  record: document.getElementById('rec')
+  record: document.getElementById('rec'),
+  show: document.getElementById('show'),
+  // instant: document.getElementById('ins'),
+  confine: document.getElementById('conf')
 }
 const buttons = {
   record: document.getElementById('hist')
 }
 
-const settings = { animate: { run: false, notPaused: true }, record: false }
+const settings = { animate: { run: false, notPaused: true }, record: false, confineSlitSize: true, show: true }
 const pos = { topViewXY: new Vec(1200, 600), grating: { x: 300, dx: 5 }, screen: { x: 900, dx: 4 }, phaseDiagram: new Vec(1000, 700) }
 
 let slit = new Grating(5, 10, 80)
@@ -56,16 +59,40 @@ function addEventListeners () {
     update()
   })
   sliders.wave.s.addEventListener('input', (e, v = sliders.wave.s.valueAsNumber) => {
-    if (v !== wave.length) { sliders.wave.t.textContent = v; wave.length = v; update(true); intensity.staleintensities() }
+    if (v !== wave.length) {
+      sliders.wave.t.textContent = v
+      wave.length = v
+      intensity.staleintensities()
+      update(true)
+    }
   })
   sliders.slits.s.addEventListener('input', (e, v = sliders.slits.s.valueAsNumber) => {
-    if (v !== slit.number) { sliders.slits.t.textContent = v; slit = slit.update(v); update(true) }
+    if (v !== slit.number) {
+      sliders.slits.t.textContent = v
+      slit = slit.update(v)
+      intensity.staleintensities()
+      update(true)
+    }
   })
   sliders.slitSeparation.s.addEventListener('input', (e, v = sliders.slitSeparation.s.valueAsNumber) => {
-    if (v !== slit.separation) { sliders.slitSeparation.t.textContent = v; slit = slit.update(undefined, undefined, v); update(true) }
+    if (v !== slit.separation) {
+      const nv = settings.confineSlitSize ? Math.max(v, slit.width) : v
+      sliders.slitSeparation.t.textContent = nv
+      sliders.slitSeparation.s.value = nv
+      slit = slit.update(undefined, undefined, nv)
+      intensity.staleintensities()
+      update(true)
+    }
   })
   sliders.slitWidth.s.addEventListener('input', (e, v = sliders.slitWidth.s.valueAsNumber) => {
-    if (v !== slit.width) { sliders.slitWidth.t.textContent = v; slit = slit.update(undefined, v); update(true) }
+    if (v !== slit.width) {
+      const nv = settings.confineSlitSize ? Math.min(v, slit.separation) : v
+      sliders.slitWidth.t.textContent = nv
+      sliders.slitWidth.s.value = nv
+      slit = slit.update(undefined, nv)
+      intensity.staleintensities()
+      update(true)
+    }
   })
 
   checkboxes.animate.addEventListener('change', (e) => {
@@ -75,6 +102,17 @@ function addEventListeners () {
   checkboxes.record.addEventListener('change', (e) => {
     // console.log(checkboxes.animate)
     settings.record = checkboxes.record.checked
+    if (!settings.record) intensity.clear()
+    update()
+  })
+  checkboxes.confine.addEventListener('change', (e) => {
+    // console.log(checkboxes.animate)
+    settings.confineSlitSize = checkboxes.confine.checked
+  })
+  checkboxes.show.addEventListener('change', (e) => {
+    // console.log(checkboxes.animate)
+    settings.show = checkboxes.show.checked
+    update()
   })
   canvas.addEventListener('mousedown', e => { mouseCoords = new Vec(e.offsetX, e.offsetY); settings.animate.notPaused = false })
   canvas.addEventListener('mouseup', e => { mouseCoords = undefined; settings.animate.notPaused = true })
@@ -99,9 +137,10 @@ function addEventListeners () {
   })
 }
 
-function update () {
+function update (fromSlider) {
   ray = new Ray(slit, displacement, pos.screen.x - pos.grating.x, wave)
-  drawBackground(bx, intensity.values, pos, wave.amplitude, slit)
+  if (fromSlider && settings.record) { intensity.addAllIntensities(ray) }
+  drawBackground(bx, intensity.values, pos, wave.amplitude, slit, settings.show)
   drawForground(fx, slit, ray, wave, pos)
   cx.clearRect(0, 0, cx.canvas.width, cx.canvas.height)
   cx.drawImage(bx.canvas, 0, 0)

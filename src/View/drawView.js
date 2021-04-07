@@ -71,7 +71,7 @@ function makeBlocks ({ edges: e, firstSlit: f, width: w }, vSize) {
   return blocks.reduce((ac, cv, i, ar) => i % 2 ? ac.concat([[ar[i - 1], ar[i]]]) : ac, [])
 }
 
-function drawBackground (c, intensity, pos, amplitude, slit) {
+function drawBackground (c, intensity, pos, amplitude, slit, show) {
   const blocks = makeBlocks(slit, pos.topViewXY.y)
   c.clearRect(0, 0, c.canvas.width, c.canvas.height)
   c.fillStyle = 'lightgrey'
@@ -82,9 +82,10 @@ function drawBackground (c, intensity, pos, amplitude, slit) {
   blocks.forEach(([y1, y2], i, a) => {
     c.fillRect(pos.grating.x - pos.grating.dx, y1, pos.grating.dx * 2, y2 - y1)
   })
-
-  drawTrace(c, intensity[0], pos.screen.x, 0, 'rgba(255, 0, 0, 0.4)', 0, 1, -amplitude, 0)
-  drawTrace(c, intensity[1], pos.screen.x, 0, 'rgba(0, 255, 0, 0.4)', 0, 1, -amplitude, 0)
+  if (show) {
+    drawTrace(c, intensity[0], pos.screen.x, 0, 'rgba(255, 0, 0, 0.4)', 0, 1, -amplitude, 0)
+    drawTrace(c, intensity[1], pos.screen.x, 0, 'rgba(0, 255, 0, 0.4)', 0, 1, -amplitude, 0)
+  }
   drawTrace(c, intensity[2], pos.screen.x, 0, 'black', 0, 1, -amplitude, 0)
   drawTrace(c, intensity[3], pos.screen.x, 0, 'rgba(0, 0, 0, 0.2)', 0, 1, -amplitude, 0)
   drawTrace(c, intensity[4], pos.screen.x - 100, 0, undefined, 0, 1, -amplitude, 0)
