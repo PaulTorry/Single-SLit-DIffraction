@@ -40,7 +40,7 @@ class Ray {
 
   getRay (d = 1) { return new Ray(this.grating, d, this.geo.D, this.wave) }
   // updateSlit (grating) { return new Ray(grating, this.geo.d, this.geo.D, this.wave) }
-  // updatePhase (phase) { return new Ray(this.grating, this.geo.d, this.geo.D, { length: this.wave.length, phase: phase, ampltude: this.wave.amplitude }) }
+  updatePhase (phase) { return new Ray(this.grating, this.geo.d, this.geo.D, { length: this.wave.length, phase: phase, ampltude: this.wave.amplitude }) }
 
   static getGeometry (d, D) {
     const theta = Math.atan(-d / D)

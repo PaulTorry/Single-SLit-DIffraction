@@ -139,7 +139,7 @@ function addEventListeners () {
 
 function update (fromSlider) {
   ray = new Ray(slit, displacement, pos.screen.x - pos.grating.x, wave)
-  if (fromSlider && settings.record) { intensity.addAllIntensities(ray) }
+  if (fromSlider && settings.record) { intensity.clear(); intensity.addAllIntensities(ray) }
   drawBackground(bx, intensity.values, pos, wave.amplitude, slit, settings.show)
   drawForground(fx, slit, ray, wave, pos)
   cx.clearRect(0, 0, cx.canvas.width, cx.canvas.height)
@@ -149,10 +149,12 @@ function update (fromSlider) {
 
 function animateIt (time, lastTime) {
   if (lastTime != null & settings.animate.run & settings.animate.notPaused) {
-    const prePhase = ray.resultant.phase
+    // const prePhase = ray.resultant.phase
     wave.phase += (time - lastTime) * 0.003
-    // ray = ray.updatePhase(wave.phase)
-    if (prePhase > 0 && ray.resultant.phase < 0) {
+    let newRay = ray.updatePhase(wave.phase)
+    console.log(wave.phase)
+    if (ray.resultant.phase > newRay.resultant.phase) {
+      console.log("draw")
       intensity.addIntensity(ray)
     }
     update()
