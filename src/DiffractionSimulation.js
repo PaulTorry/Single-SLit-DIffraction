@@ -26,11 +26,11 @@ const buttons = {
   record: document.getElementById('hist')
 }
 
-const settings = { animate: { run: false, notPaused: true }, record: false, confineSlitSize: true, show: true }
+const settings = { animate: { run: false, notPaused: true }, record: false, confineSlitSize: true, show: false }
 const pos = { topViewXY: new Vec(1200, 600), grating: { x: 300, dx: 5 }, screen: { x: 900, dx: 4 }, phaseDiagram: new Vec(1000, 700) }
 
-let slit = new Grating(5, 10, 80)
-const wave = { length: 2, phase: 0, amplitude: 20 }
+let slit = new Grating(2, 1, 100)
+const wave = { length: 4, phase: 0, amplitude: 20 }
 let displacement = 1
 let ray = new Ray(slit, displacement, pos.screen.x - pos.grating.x, wave)
 
@@ -149,12 +149,9 @@ function update (fromSlider) {
 
 function animateIt (time, lastTime) {
   if (lastTime != null & settings.animate.run & settings.animate.notPaused) {
-    // const prePhase = ray.resultant.phase
-    wave.phase += (time - lastTime) * 0.003
-    let newRay = ray.updatePhase(wave.phase)
-    console.log(wave.phase)
+    wave.phase += (time - lastTime) * 0.002
+    const newRay = ray.updatePhase(wave.phase)
     if (ray.resultant.phase > newRay.resultant.phase) {
-      console.log("draw")
       intensity.addIntensity(ray)
     }
     update()

@@ -4,10 +4,14 @@
     <body bgcolor = "white">
 
       <div class="slidecontainer">
-        Slits <input type="range" min="1" max="6" value="5" class="slider" id="slitsSlide"> <span id="slitsText">2</span>
-        Wavelength <input type="range" min="1" max="10" value="2" class="slider" id="wavelengthSlide"> <span id="wavelengthText">20</span>
-        slitSeparation <input type="range" min="10" max="200" value="80" class="slider" id="slitSeparationSlide"> <span id="slitSeparationText">2</span>
-        slitWidth <input type="range" min="1" max="200" value="1" class="slider" id="slitWidthSlide"> <span id="slitWidthText">20</span>
+        Slits <input type="range" min="1" max="6" value="2" class="slider" id="slitsSlide">
+          <span id="slitsText">2</span>
+        Wavelength <input type="range" min="1" max="10" value="4" class="slider" id="wavelengthSlide">
+          <span id="wavelengthText">4</span>
+        slitSeparation <input type="range" min="10" max="200" value="100" class="slider" id="slitSeparationSlide">
+          <span id="slitSeparationText">100</span>
+        slitWidth <input type="range" min="1" max="200" value="1" class="slider" id="slitWidthSlide">
+          <span id="slitWidthText">1</span>
       </div>
       <div class ="buttons">
         <button id="hist">storeHistory</button>&nbsp;&nbsp;
@@ -15,7 +19,7 @@
        <!-- <input type="checkbox" id="ins"> <label for="rec">Instant Record</label>&nbsp;&nbsp;-->
         <input type="checkbox" id="anim"><label for="anim">Animate</label>&nbsp;&nbsp;
         <input type="checkbox" id="conf" checked><label for="conf">Confine Slit Size</label>&nbsp;&nbsp;
-        <input type="checkbox" id="show" checked><label for="show">Show 
+        <input type="checkbox" id="show"><label for="show">Show 
           <span style="color: #ff0000">Multiple</span> /
           <span style="color: #1a8b0b">Single</span> slit contributions
         </label>&nbsp;&nbsp;

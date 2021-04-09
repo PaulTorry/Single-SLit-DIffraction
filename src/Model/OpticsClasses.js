@@ -7,6 +7,7 @@ class Grating {
     this.firstSlit = -((number - 1) / 2) * (separation) - width / 2
     this.centres = Array(Number.parseInt(number)).fill().map((_, i) => i * (separation) + width / 2)
     this.edges = this.centres.map((v) => [v - width / 2, v + width / 2])
+    this.largestEdge = number * (separation) + width
   }
 
   update (n = this.number, w = this.width, s = this.separation) {

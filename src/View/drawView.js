@@ -6,7 +6,13 @@ const colours = (i, opacity = 1) => {
   const col = 'rgba(' + colourArray[i][0] + ',' + colourArray[i][1] + ',' + colourArray[i][2] + ',' + opacity + ')'
   return col
 }
-const getSinFill = (a, b) => [[a, b - a, 'blue', (a) => Math.max(a, 0)], [a, b - a, 'red', (a) => Math.min(a, 0)]]
+// const getSinFill = (a, b) => [[a, b - a, 'blue', (a) => Math.max(a, 0)], [a, b - a, 'red', (a) => Math.min(a, 0)]]
+
+// const getSinFill = (aa, bb) => {
+//   const a = aa; const b = bb - aa
+//   if (Math.sign(a) === 1) { a = aa +  }
+//   return [[b, a, 'blue', (a) => Math.max(a, 0)], [a, b, 'red', (a) => Math.min(a, 0)]]
+// }
 
 // Draw foreground
 
@@ -23,6 +29,14 @@ function drawForground (c, slit, ray, wave, pos) {
 
   // waves, phasors at slit and at path difference
   let arrowStart = new Vec(0, 0)
+
+  // const getSinFill = (a, b) => [[a, b - a, 'blue', (a) => Math.max(a, 0)], [a, b - a, 'red', (a) => Math.min(a, 0)]]
+
+  const getSinFill = (aa, bb) => {
+    const a = aa; const b = bb - aa
+    // if (Math.sign(a) === 1) { a = aa }
+    return [[a, b, 'blue', (a) => Math.max(a, 0)], [a, b, 'red', (a) => Math.min(a, 0)]]
+  }
 
   ray.zipped.forEach(({ e: [top, bot], ep: [ph1, ph2], integral, posPonB: [p1, p2] }, i, a) => {
     const slitTop = new Vec(pos.grating.x, top + slit.firstSlit + pos.topViewXY.y / 2)
@@ -51,7 +65,10 @@ function drawForground (c, slit, ray, wave, pos) {
   // bottom wave with areas
   // const fills = sd.centres.map((yy, i, a) => [yy * geo.sin, 3, colours(i)])
 
-  const fills = slit.edges.map(([yy, yyy], i, a) => [-yy * geo.sin, -yyy * geo.sin + yy * geo.sin, colours(i)])
+  const fills = slit.edges.map((c, i, a) => {
+    const [yyy, yy] = c.map(cc => cc * geo.sin)
+    return [Math.min(-yyy, -yy), Math.max(Math.abs(-yyy + yy), 1), colours(i)]
+  })
 
   // newSin(c, wave, 100, pos.topViewXY.y + 300, [0, 600], pos.grating.x, 1, 0, 'black', fills)
   newSin(c, wave, 300, 700, [-150, 700], 0, 4, 0, 'black', fills)
