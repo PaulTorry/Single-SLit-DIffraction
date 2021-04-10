@@ -16,10 +16,10 @@ const colours = (i, opacity = 1) => {
 
 // Draw foreground
 
-function drawForground (c, slit, ray, wave, pos) {
+function drawForground (c, slit, ray, wave, pos, viewScale) {
   const geo = ray.geo
   const screenDisplacement = geo.d + pos.topViewXY.y / 2
-  c.clearRect(0, 0, c.canvas.width, c.canvas.height)
+  // c.clearRect(0, 0, c.canvas.width, c.canvas.height)
 
   // line from center of slits to screen
   drawLine(c, pos.grating.x, pos.topViewXY.y / 2, geo.D, geo.d)
@@ -38,7 +38,7 @@ function drawForground (c, slit, ray, wave, pos) {
     return [[a, b, 'blue', (a) => Math.max(a, 0)], [a, b, 'red', (a) => Math.min(a, 0)]]
   }
 
-  ray.zipped.forEach(({ e: [top, bot], ep: [ph1, ph2], integral, posPonB: [p1, p2] }, i, a) => {
+  ray.grating.edges.forEach(([top, bot], i) => {
     const slitTop = new Vec(pos.grating.x, top + slit.firstSlit + pos.topViewXY.y / 2)
     const slitBottom = new Vec(pos.grating.x, bot + slit.firstSlit + pos.topViewXY.y / 2)
 
@@ -47,11 +47,16 @@ function drawForground (c, slit, ray, wave, pos) {
     newSin(c, wave, ...slitBottom, [0, geo.l / 2], 0, 1, geo.theta, colours(i), getSinFill(-top * geo.sin, -bot * geo.sin))
 
     // phasor at grating
-    drawLine(c, ...slitTop, ...Vec.unitY.scale(wave.amplitude))
+    drawLine(c, ...slitTop, ...ray.phasorAtGrating.scale(wave.amplitude))
 
     // on angled sin curve
-    drawLine(c, ...slitTop.add(p1), ...ph1.scale(wave.amplitude))
-    drawLine(c, ...slitBottom.add(p2), ...ph2.scale(wave.amplitude))
+    // drawLine(c, ...slitTop.add(p1), ...ph1.scale(wave.amplitude))
+    // drawLine(c, ...slitBottom.add(p2), ...ph2.scale(wave.amplitude))
+    drawLine(c, ...slitTop.add(ray.calcPhasorPos(top)), ...ray.calculatePhasor(top).scale(wave.amplitude))
+    drawLine(c, ...slitBottom.add(ray.calcPhasorPos(bot)), ...ray.calculatePhasor(bot).scale(wave.amplitude))
+
+    // Phasors at botom and in sum
+    const integral = ray.calcIntegral(top, bot)
     // vector at bottom
     drawLine(c, ...pos.phaseDiagram.addXY(-100, i * 40 - slit.number * 20 + 20), ...integral.scale(wave.amplitude), colours(i))
     // vector added to sum
@@ -75,12 +80,13 @@ function drawForground (c, slit, ray, wave, pos) {
   drawLine(c, 300, 600, 0, 200, 'black')
 
   const finalPhasor = ray.resultant.scale(wave.amplitude * ray.singleSlitModulation)
+  const finalPhasorNorm = ray.normalisedResultant.scale(wave.amplitude * ray.singleSlitModulation)
   drawLine(c, ...pos.phaseDiagram.addXY(100, 0), ...finalPhasor, 'black')
 
   // Resultant sin wave and phasor at right
-  const newWave2 = { amplitude: wave.amplitude * ray.resultant.mag * ray.singleSlitModulation, length: wave.length, phase: ray.resultant.phase - Math.PI / 2 }
+  const newWave2 = { amplitude: wave.amplitude * ray.normalisedResultant.mag * ray.singleSlitModulation * viewScale.intensity, length: wave.length, phase: ray.resultant.phase - Math.PI / 2 }
   newSin(c, newWave2, pos.screen.x, screenDisplacement, [0, wave.phase * wave.length], 0, 1, 0, 'black')
-  drawLine(c, pos.screen.x, screenDisplacement, ...finalPhasor, 'black')
+  drawLine(c, pos.screen.x, screenDisplacement, ...finalPhasorNorm.scale(viewScale.intensity), 'black')
 }
 
 function makeBlocks ({ edges: e, firstSlit: f, width: w }, vSize) {
@@ -88,9 +94,9 @@ function makeBlocks ({ edges: e, firstSlit: f, width: w }, vSize) {
   return blocks.reduce((ac, cv, i, ar) => i % 2 ? ac.concat([[ar[i - 1], ar[i]]]) : ac, [])
 }
 
-function drawBackground (c, intensity, pos, amplitude, slit, show) {
+function drawBackground (c, intensity, pos, amplitude, slit, show, viewScale) {
   const blocks = makeBlocks(slit, pos.topViewXY.y)
-  c.clearRect(0, 0, c.canvas.width, c.canvas.height)
+  // c.clearRect(0, 0, c.canvas.width, c.canvas.height)
   c.fillStyle = 'lightgrey'
   c.strokeStyle = 'black'
   c.strokeRect(0, 0, c.canvas.width, c.canvas.height)
@@ -99,13 +105,14 @@ function drawBackground (c, intensity, pos, amplitude, slit, show) {
   blocks.forEach(([y1, y2], i, a) => {
     c.fillRect(pos.grating.x - pos.grating.dx, y1, pos.grating.dx * 2, y2 - y1)
   })
+  const traceAmplitude = amplitude * viewScale.intensity
   if (show) {
-    drawTrace(c, intensity[0], pos.screen.x, 0, 'rgba(255, 0, 0, 0.4)', 0, 1, -amplitude, 0)
-    drawTrace(c, intensity[1], pos.screen.x, 0, 'rgba(0, 255, 0, 0.4)', 0, 1, -amplitude, 0)
+    drawTrace(c, intensity[0], pos.screen.x, 0, 'rgba(255, 0, 0, 0.3)', 0, 1, -traceAmplitude, 0)
+    drawTrace(c, intensity[1], pos.screen.x, 0, 'rgba(0, 255, 0, 0.5)', 0, 1, -traceAmplitude, 0)
   }
-  drawTrace(c, intensity[2], pos.screen.x, 0, 'black', 0, 1, -amplitude, 0)
-  drawTrace(c, intensity[3], pos.screen.x, 0, 'rgba(0, 0, 0, 0.2)', 0, 1, -amplitude, 0)
-  drawTrace(c, intensity[4], pos.screen.x - 100, 0, undefined, 0, 1, -amplitude, 0)
+  drawTrace(c, intensity[2], pos.screen.x, 0, 'black', 0, 1, -traceAmplitude, 0)
+  drawTrace(c, intensity[3], pos.screen.x, 0, 'rgba(0, 0, 0, 0.2)', 0, 1, -traceAmplitude, 0)
+  drawTrace(c, intensity[4], pos.screen.x - 100, 0, undefined, 0, 1, -traceAmplitude, 0)
 }
 
 export { drawForground, drawBackground }

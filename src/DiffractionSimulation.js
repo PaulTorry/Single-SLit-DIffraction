@@ -26,6 +26,7 @@ const buttons = {
   record: document.getElementById('hist')
 }
 
+const viewScale = { intensity: 7 }
 const settings = { animate: { run: false, notPaused: true }, record: false, confineSlitSize: true, show: false }
 const pos = { topViewXY: new Vec(1200, 600), grating: { x: 300, dx: 5 }, screen: { x: 900, dx: 4 }, phaseDiagram: new Vec(1000, 700) }
 
@@ -42,6 +43,13 @@ update()
 
 function addEventListeners () {
   let mouseCoords
+
+  document.addEventListener('keypress', (e) => {
+    if (e.key === 's') wave.amplitude--
+    if (e.key === 'w') wave.amplitude++
+    console.log(wave.amplitude)
+    update(true)
+  })
 
   function dragEvent (a, b) {
     const d = b.subtract(a)
@@ -102,7 +110,7 @@ function addEventListeners () {
   checkboxes.record.addEventListener('change', (e) => {
     // console.log(checkboxes.animate)
     settings.record = checkboxes.record.checked
-    if (!settings.record) intensity.clear()
+    if (!settings.record) intensity.clear(true)
     update()
   })
   checkboxes.confine.addEventListener('change', (e) => {
@@ -139,12 +147,13 @@ function addEventListeners () {
 
 function update (fromSlider) {
   ray = new Ray(slit, displacement, pos.screen.x - pos.grating.x, wave)
-  if (fromSlider && settings.record) { intensity.clear(); intensity.addAllIntensities(ray) }
-  drawBackground(bx, intensity.values, pos, wave.amplitude, slit, settings.show)
-  drawForground(fx, slit, ray, wave, pos)
+  if (fromSlider && settings.record) { intensity.clear(true); intensity.addAllIntensities(ray) }
   cx.clearRect(0, 0, cx.canvas.width, cx.canvas.height)
-  cx.drawImage(bx.canvas, 0, 0)
-  cx.drawImage(fx.canvas, 0, 0)
+  drawBackground(cx, intensity.values, pos, wave.amplitude, slit, settings.show, viewScale)
+  drawForground(cx, slit, ray, wave, pos, viewScale)
+  // cx.clearRect(0, 0, cx.canvas.width, cx.canvas.height)
+  // cx.drawImage(bx.canvas, 0, 0)
+  // cx.drawImage(fx.canvas, 0, 0)
 }
 
 function animateIt (time, lastTime) {

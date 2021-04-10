@@ -18,29 +18,27 @@ class Grating {
 class Ray {
   constructor (grating = new Grating(), d = 1, D = 100, wave = { length: 2, phase: 0, amplitude: 20 }) {
     this.grating = grating; this.wave = wave
-    this.length = grating.number
     this.geo = Ray.getGeometry(d, D)
-    this.centerPhasors = grating.centres.map(c => Vec.fromCircularCoords(1, -wave.phase + c * this.geo.sin / wave.length))
-    this.edgePhasors = grating.edges.map(c => c.map(cc => Vec.fromCircularCoords(1, -wave.phase + cc * this.geo.sin / wave.length)))
-    this.posOfPhasor = this.grating.edges.map(c => c.map(cc => Vec.unitX.rotate(this.geo.theta).scale(-cc * this.geo.sin)))
-    this.phasorAtGrating = this.edgePhasors[0][0]
-    this.integrals = this.edgePhasors.map(c => c[0].integrateTo(c[1]).scale(5 / (grating.width * this.geo.sin)))
-    this.lengthOfIntegral = Math.sin((grating.edges[0][1] - grating.edges[0][0]) * 0.5 * (this.geo.sin / wave.length)) * 10 / (grating.width * this.geo.sin)
-    this.resultant = grating.centres.reduce((p, c) => p.add(Vec.fromCircularCoords(1, -wave.phase + c * this.geo.sin / wave.length)), new Vec(0, 0))
-    this.singleSlitModulation = wave.length * Math.abs(Math.sin((grating.width) * 0.5 * (this.geo.sin / wave.length)) * 4 / (grating.width * this.geo.sin))
-    this.zipped = Array(this.length).fill().map((c, i, a) => {
-      return { e: this.grating.edges[i], ep: this.edgePhasors[i], integral: this.integrals[i], posPonB: this.posOfPhasor[i] }
-    })
+    this.phasorAtGrating = this.calculatePhasor(0)
+    this.resultant = grating.centres.reduce((p, c) => p.add(this.calculatePhasor(c)), new Vec(0, 0))
+    this.normalisedResultant = this.resultant.scale(1 / this.grating.number)
   }
 
-  getDataForSlit (i = 0) {
-    return { sin: this.geo.sin, edges: this.grating.edges[i], ePh: this.edgePhasors[i], res: this.resultant }
+  get singleSlitModulation () {
+    const slitPhaseDifference = this.grating.width * this.geo.sin / this.wave.length
+    return 2 * Math.abs(Math.sin(0.5 * slitPhaseDifference) / slitPhaseDifference)
   }
+
+  calcIntegral (posA, posB) { return this.calculatePhasor(posA).integrateTo(this.calculatePhasor(posB)).scale(5 / (this.grating.width * this.geo.sin)) }
+
+  calcPhasorPos (posOnGrating) { return Vec.unitX.rotate(this.geo.theta).scale(-posOnGrating * this.geo.sin) }
+
+  calculatePhasor (posOnGrating) { return Vec.fromCircularCoords(1, -this.wave.phase + posOnGrating * this.geo.sin / this.wave.length) }
 
   print (i = 0) { console.log(this.geo.sin, this.grating.edges[i], this.edgePhasors[i], this.resultant) }
 
   getRay (d = 1) { return new Ray(this.grating, d, this.geo.D, this.wave) }
-  // updateSlit (grating) { return new Ray(grating, this.geo.d, this.geo.D, this.wave) }
+
   updatePhase (phase) { return new Ray(this.grating, this.geo.d, this.geo.D, { length: this.wave.length, phase: phase, ampltude: this.wave.amplitude }) }
 
   static getGeometry (d, D) {
@@ -59,24 +57,25 @@ class IntensityPattern {
     this.values = Array(5).fill(0).map(c => Array(vSize).fill(0))
   }
 
+  addOneIntensity (ray, i) {
+    const thisRay = ray.getRay(i - this.vSize / 2)
+    this.values[0][i] = thisRay.normalisedResultant.mag
+    this.values[1][i] = thisRay.singleSlitModulation
+    this.values[2][i] = thisRay.normalisedResultant.mag * thisRay.singleSlitModulation
+  }
+
   addIntensity (ray, d = ray.geo.d) {
     const screenD = d + this.vSize / 2
     for (let i = screenD - 3; i <= screenD + 3; i++) {
       if (i > 0 && i < this.vSize) {
-        const thisRay = ray.getRay(i - this.vSize / 2)
-        this.values[0][i] = thisRay.resultant.mag
-        this.values[1][i] = thisRay.singleSlitModulation
-        this.values[2][i] = thisRay.resultant.mag * thisRay.singleSlitModulation
+        this.addOneIntensity(ray, i)
       }
     }
   }
 
   addAllIntensities (ray) {
     for (let i = 0; i <= this.vSize; i++) {
-      const thisRay = ray.getRay(i - this.vSize / 2)
-      this.values[0][i] = thisRay.resultant.mag
-      this.values[1][i] = thisRay.singleSlitModulation
-      this.values[2][i] = thisRay.resultant.mag * thisRay.singleSlitModulation
+      this.addOneIntensity(ray, i)
     }
   }
 
@@ -89,7 +88,13 @@ class IntensityPattern {
     this.values[2] = this.values[2].map(c => 0)
   }
 
-  clear () { this.values = Array(5).fill(0).map(c => Array(this.vSize).fill(0)) }
+  clear (stale, history) {
+    this.values[0] = this.values[0].map(c => 0)
+    this.values[1] = this.values[1].map(c => 0)
+    this.values[2] = this.values[2].map(c => 0)
+    if (stale) { this.values[3] = this.values[3].map(c => 0) }
+    if (history) { this.values[4] = this.values[4].map(c => 0) }
+  }
 
   recordIntensites () { this.values[4] = this.values[2].map(a => a) }
 }
