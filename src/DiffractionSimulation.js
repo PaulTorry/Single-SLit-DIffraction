@@ -20,14 +20,15 @@ const checkboxes = {
   record: document.getElementById('rec'),
   show: document.getElementById('show'),
   // instant: document.getElementById('ins'),
-  confine: document.getElementById('conf')
+  confine: document.getElementById('conf'),
+  mirror: document.getElementById('mirror')
 }
 const buttons = {
   record: document.getElementById('hist')
 }
 
 const viewScale = { intensity: 7 }
-const settings = { animate: { run: false, notPaused: true }, record: false, confineSlitSize: true, show: false }
+const settings = { animate: { run: false, notPaused: true }, record: false, confineSlitSize: true, show: false, mirror: true }
 const pos = { topViewXY: new Vec(1200, 600), grating: { x: 300, dx: 5 }, screen: { x: 900, dx: 4 }, phaseDiagram: new Vec(1000, 700) }
 
 let slit = new Grating(2, 1, 100)
@@ -57,7 +58,8 @@ function addEventListeners () {
       wave.phase += (d.x) * 0.5 / wave.length
     } else if (16 * d.x * d.x < d.y * d.y) {
       displacement += d.y
-      if (settings.record) { intensity.addIntensity(ray) }
+      if (displacement > -1 && settings.mirror) displacement = -1
+      if (settings.record) { intensity.addIntensity(ray, undefined, settings.mirror) }
       if (settings.animate.run && !settings.record) { wave.phase = 0 }
     }
     update()
@@ -122,6 +124,11 @@ function addEventListeners () {
     settings.show = checkboxes.show.checked
     update()
   })
+  checkboxes.mirror.addEventListener('change', (e) => {
+    // console.log(checkboxes.animate)
+    settings.mirror = checkboxes.mirror.checked
+    update()
+  })
   canvas.addEventListener('mousedown', e => { mouseCoords = new Vec(e.offsetX, e.offsetY); settings.animate.notPaused = false })
   canvas.addEventListener('mouseup', e => { mouseCoords = undefined; settings.animate.notPaused = true })
   canvas.addEventListener('dblclick', e => {
@@ -147,7 +154,7 @@ function addEventListeners () {
 
 function update (fromSlider) {
   ray = new Ray(slit, displacement, pos.screen.x - pos.grating.x, wave)
-  if (fromSlider && settings.record) { intensity.clear(true); intensity.addAllIntensities(ray) }
+  if (fromSlider && settings.record) { intensity.clear(true); intensity.addAllIntensities(ray, settings.mirror) }
   cx.clearRect(0, 0, cx.canvas.width, cx.canvas.height)
   drawBackground(cx, intensity.values, pos, wave.amplitude, slit, settings.show, viewScale)
   drawForground(cx, slit, ray, wave, pos, viewScale)
@@ -161,7 +168,7 @@ function animateIt (time, lastTime) {
     wave.phase += (time - lastTime) * 0.002
     const newRay = ray.updatePhase(wave.phase)
     if (ray.resultant.phase > newRay.resultant.phase) {
-      intensity.addIntensity(ray)
+      intensity.addIntensity(ray, undefined, settings.mirror)
     }
     update()
   }

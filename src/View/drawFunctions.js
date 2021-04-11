@@ -1,8 +1,15 @@
 import { Vec } from '../Vec.js'
 
-function newSin (c, w, startX, startY, [start, length] = [0, 200], pd = 0, scale = 1, deflectionAngle = 0, colour = 'black', fill = [[0, 0, 'black']], trigFunc = Math.cos) {
+/*
+*  c, canvas;   w, wave (length, amplitude, phase)
+*  origin (the centre of rotation of the cosine curve, also where phase = w.phase)
+*  [Where the curve starts to draw (can be -ve), where the curve ends] - In local pixels before scaling
+*  pd, path difference;       scale (both x and y are muliplied to the screen)
+*/
+
+function cosineCurve (c, w, originX, originY, [start, length] = [0, 200], pd = 0, scale = 1, deflectionAngle = 0, colour = 'black', fill = [[0, 0, 'black']], trigFunc = Math.cos) {
   const dispAtX = (x, rectFunc = (a) => a) => rectFunc(w.amplitude * trigFunc(((x + pd)) / (w.length) - w.phase))
-  const pageVec = (x, y) => new Vec(x, y).rotate(deflectionAngle).scale(scale).addXY(startX, startY)
+  const pageVec = (x, y) => new Vec(x, y).rotate(deflectionAngle).scale(scale).addXY(originX, originY)
   const plot = (x, dx, rectFunc) => {
     c.beginPath()
     c.moveTo(...pageVec(x, 0))
@@ -47,4 +54,4 @@ function drawTrace (cx, array, startX = 0, startY = 0, colour = 'rgba(0, 0, 0, 0
   cx.stroke()
 }
 
-export { drawLine, drawTrace, newSin }
+export { drawLine, drawTrace, cosineCurve as newSin }

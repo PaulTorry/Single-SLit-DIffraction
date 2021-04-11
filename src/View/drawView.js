@@ -1,23 +1,22 @@
 import { Vec } from '../Vec.js'
 import { drawLine, drawTrace, newSin } from './drawFunctions.js'
 
+// Each slit has a unique colour @TODO get opinions on these
+
 const colours = (i, opacity = 1) => {
   const colourArray = [[73, 137, 171], [73, 171, 135], [73, 171, 96], [135, 171, 73], [171, 166, 73], [171, 146, 73]]
   const col = 'rgba(' + colourArray[i][0] + ',' + colourArray[i][1] + ',' + colourArray[i][2] + ',' + opacity + ')'
   return col
 }
-// const getSinFill = (a, b) => [[a, b - a, 'blue', (a) => Math.max(a, 0)], [a, b - a, 'red', (a) => Math.min(a, 0)]]
 
-// const getSinFill = (aa, bb) => {
-//   const a = aa; const b = bb - aa
-//   if (Math.sign(a) === 1) { a = aa +  }
-//   return [[b, a, 'blue', (a) => Math.max(a, 0)], [a, b, 'red', (a) => Math.min(a, 0)]]
-// }
-
-// Draw foreground
+// Draw foreground, the rays and sin waves and phasors
 
 function drawForground (c, slit, ray, wave, pos, viewScale) {
   const geo = ray.geo
+  const edges = ray.grating.edges.map(a => a) // .reverse().map(([a, b]) => [a + 2 * ray.grating.firstSlit, b + 2 * ray.grating.firstSlit])
+
+  const firstSlitPosY = slit.firstSlit + pos.topViewXY.y / 2
+  // console.log(edges.flat(), ray.grating.edges.flat())
   const screenDisplacement = geo.d + pos.topViewXY.y / 2
   // c.clearRect(0, 0, c.canvas.width, c.canvas.height)
 
@@ -30,17 +29,20 @@ function drawForground (c, slit, ray, wave, pos, viewScale) {
   // waves, phasors at slit and at path difference
   let arrowStart = new Vec(0, 0)
 
-  // const getSinFill = (a, b) => [[a, b - a, 'blue', (a) => Math.max(a, 0)], [a, b - a, 'red', (a) => Math.min(a, 0)]]
-
+  // getSinFill is an array to pass to drawSin which draws the red and blue components on the wave
+  // Work in progress const getSinFill = (a, b) => [[a, b - a, 'blue', (a) => Math.max(a, 0)], [a, b - a, 'red', (a) => Math.min(a, 0)]]
   const getSinFill = (aa, bb) => {
     const a = aa; const b = bb - aa
-    // if (Math.sign(a) === 1) { a = aa }
     return [[a, b, 'blue', (a) => Math.max(a, 0)], [a, b, 'red', (a) => Math.min(a, 0)]]
   }
 
-  ray.grating.edges.forEach(([top, bot], i) => {
-    const slitTop = new Vec(pos.grating.x, top + slit.firstSlit + pos.topViewXY.y / 2)
-    const slitBottom = new Vec(pos.grating.x, bot + slit.firstSlit + pos.topViewXY.y / 2)
+  /*
+  *   The main loop which goes through each edge to draw the sin cures, and phasors (also the phasors at bottom right)
+  */
+
+  edges.forEach(([top, bot], i) => {
+    const slitTop = new Vec(pos.grating.x, top + firstSlitPosY)
+    const slitBottom = new Vec(pos.grating.x, bot + firstSlitPosY)
 
     // sincurves at angles
     newSin(c, wave, ...slitTop, [0, geo.l / 2], 0, 1, geo.theta, colours(i, 0.4))
@@ -89,22 +91,34 @@ function drawForground (c, slit, ray, wave, pos, viewScale) {
   drawLine(c, pos.screen.x, screenDisplacement, ...finalPhasorNorm.scale(viewScale.intensity), 'black')
 }
 
-function makeBlocks ({ edges: e, firstSlit: f, width: w }, vSize) {
-  const blocks = [0].concat(e.flat().map((v) => v + f + vSize / 2)).concat([vSize])
-  return blocks.reduce((ac, cv, i, ar) => i % 2 ? ac.concat([[ar[i - 1], ar[i]]]) : ac, [])
+// The grating is drawn by rectangles, this function takes the edges of the slit, the top and bottom and makes pairs oy y-coords
+function drawGrating (c, { edges: e, firstSlit: f, width: w }, vSize, x, dx) {
+  // Add the top and bottom of the grating
+  [0].concat(e.flat().map((v) => v + f + vSize / 2)).concat([vSize])
+    // flatten to a set of pairs for drawing
+    .reduce((ac, cv, i, ar) => i % 2 ? ac.concat([[ar[i - 1], ar[i]]]) : ac, [])
+    // draw each pair as a rectangle
+    .forEach(([y1, y2], i, a) => { c.fillRect(x - dx, y1, dx * 2, y2 - y1) })
 }
 
+/*
+*  Draws the areas for each section, the screen and the grating
+*/
+
 function drawBackground (c, intensity, pos, amplitude, slit, show, viewScale) {
-  const blocks = makeBlocks(slit, pos.topViewXY.y)
-  // c.clearRect(0, 0, c.canvas.width, c.canvas.height)
+
+  // c.clearRect(0, 0, c.canvas.width, c.canvas.height)   - for canvas based optimisation
   c.fillStyle = 'lightgrey'
   c.strokeStyle = 'black'
+  // Draws the areas on screen
   c.strokeRect(0, 0, c.canvas.width, c.canvas.height)
   c.strokeRect(0, 0, ...pos.topViewXY)
   c.strokeRect(pos.screen.x, 0, pos.screen.dx, pos.topViewXY.y)
-  blocks.forEach(([y1, y2], i, a) => {
-    c.fillRect(pos.grating.x - pos.grating.dx, y1, pos.grating.dx * 2, y2 - y1)
-  })
+
+  // Draws the grating
+  drawGrating(c, slit, pos.topViewXY.y, pos.grating.x, pos.grating.dx)
+
+  // Draw the intensity traces
   const traceAmplitude = amplitude * viewScale.intensity
   if (show) {
     drawTrace(c, intensity[0], pos.screen.x, 0, 'rgba(255, 0, 0, 0.3)', 0, 1, -traceAmplitude, 0)

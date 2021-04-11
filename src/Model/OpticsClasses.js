@@ -57,18 +57,25 @@ class IntensityPattern {
     this.values = Array(5).fill(0).map(c => Array(vSize).fill(0))
   }
 
-  addOneIntensity (ray, i) {
+  addOneIntensity (ray, i, mirror) {
     const thisRay = ray.getRay(i - this.vSize / 2)
-    this.values[0][i] = thisRay.normalisedResultant.mag
-    this.values[1][i] = thisRay.singleSlitModulation
-    this.values[2][i] = thisRay.normalisedResultant.mag * thisRay.singleSlitModulation
+    const m = thisRay.normalisedResultant.mag; const s = thisRay.singleSlitModulation
+    this.values[0][i] = m
+    this.values[1][i] = s
+    this.values[2][i] = m * s
+    if (mirror) {
+      const j = this.vSize - i
+      this.values[0][j] = m
+      this.values[1][j] = s
+      this.values[2][j] = m * s
+    }
   }
 
-  addIntensity (ray, d = ray.geo.d) {
+  addIntensity (ray, d = ray.geo.d, mirror) {
     const screenD = d + this.vSize / 2
     for (let i = screenD - 3; i <= screenD + 3; i++) {
       if (i > 0 && i < this.vSize) {
-        this.addOneIntensity(ray, i)
+        this.addOneIntensity(ray, i, mirror)
       }
     }
   }
